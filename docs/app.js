@@ -7,7 +7,7 @@
     YouTube:   { c: "#d6383d", slug: "youtube",   handle: "@MapFacto",  url: "https://www.youtube.com/@MapFacto", watch: "Watch on YouTube" },
     TikTok:    { c: "#0e8f84", slug: "tiktok",    handle: "@mapfacto_", url: "https://www.tiktok.com/@mapfacto_", watch: "Watch on TikTok" },
     Instagram: { c: "#b04ac0", slug: "instagram", handle: "@mapfacto",  url: "https://www.instagram.com/mapfacto/", watch: "Open Instagram" },
-    Facebook:  { c: "#2563eb", slug: "facebook",  handle: "MapFacto page", url: "https://www.facebook.com/1420281564498616", watch: "Watch on Facebook" },
+    Facebook:  { c: "#2563eb", slug: "facebook",  handle: "MapFacto page", url: "https://www.facebook.com/1058710957321832", watch: "Watch on Facebook" },
   };
   const ORDER = ["YouTube", "TikTok", "Instagram", "Facebook"];
   const ENGAGE = { Likes: "#2a78d6", Comments: "#eb6834", Shares: "#1baf7a" };

@@ -100,6 +100,8 @@ def main():
             print(("OK  " if row[1] else "ERR ") + f"{row[0]}: {row[2]}")
     build.write_dashboard(conn, DOCS / "data.json")
     print("Wrote", DOCS / "data.json")
+    import guard  # stop here if anything that looks like a key ended up in a public file
+    guard.main()
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ DB_PATH = Path(os.environ.get("MAPFACTO_DB", Path(__file__).with_name("mapfacto.
 GRAPH_VERSION = os.environ.get("GRAPH_VERSION", "v21.0")
 YT_HANDLE = os.environ.get("YT_HANDLE", "MapFacto").lstrip("@").strip()
 TT_HANDLE = os.environ.get("TT_HANDLE", "mapfacto_").lstrip("@").strip()
-FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "1420281564498616").strip()
+FB_PAGE_ID = (os.environ.get("FB_PAGE_ID") or "1058710957321832").strip()  # an empty secret falls back to the MapFacto Page
 SECRET_VARS = (
     "YT_API_KEY", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN", "IG_TOKEN",
     "FB_PAGE_TOKEN",

@@ -41,7 +41,7 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | `YT_API_KEY` | your YouTube API key |
 | `IG_TOKEN` | your Instagram token |
 | `FB_PAGE_TOKEN` | your Facebook Page token |
-| `FB_PAGE_ID` | `1420281564498616` |
+| `FB_PAGE_ID` | `1058710957321832` (optional, this is already the default) |
 
 TikTok needs no key.
 
@@ -62,6 +62,7 @@ Open your link and add it to your phone's home screen (in your phone's browser: 
 - **Where to see problems:** the **Connections** panel on the Overview page shows each platform's last update and any error. For full details: **Actions** tab → the latest run → *Pull the latest numbers*.
 - **Instagram token** lasts 60 days. When Instagram shows a problem, make a new token (same steps as before) and paste it into the `IG_TOKEN` secret.
 - **TikTok** sometimes blocks GitHub's servers. If it does, TikTok shows "Problem" and keeps its last numbers. The other platforms aren't affected.
+- **No keys are ever committed.** `pipeline/guard.py` checks every file before the robot saves anything and stops the run if something looks like a key or token.
 - **Data is public.** The repo, and so the view counts in `data/`, can be seen by anyone with the link. Your keys can't.
 - **If updates stop**, GitHub sometimes pauses scheduled robots. The dashboard then shows an orange dot and "the automatic update may be paused". Go to **Actions → Update MapFacto stats → Enable workflow**.
 - **Optional, YouTube retention:** add `YT_CLIENT_ID`, `YT_CLIENT_SECRET` and `YT_REFRESH_TOKEN` as secrets (YouTube Analytics API, read-only scope).

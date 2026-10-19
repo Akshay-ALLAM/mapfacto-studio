@@ -6,7 +6,7 @@ on:
   workflow_dispatch:          # lets you run it by hand from the Actions tab
   push:                       # also runs when the code changes (not for the robot's own data commits)
     branches: [main]
-    paths: ["pipeline/**", ".github/workflows/**", "requirements.txt"]
+    paths: ["pipeline/**", ".github/workflows/**", "requirements.txt", "data/**"]
 
 permissions:
   contents: write
@@ -40,6 +40,15 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
         run: python pipeline/run.py
+
+      - name: Check that no key or token would be published
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python pipeline/guard.py
 
       - name: Save to the repository
         run: |

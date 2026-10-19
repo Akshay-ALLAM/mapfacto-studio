@@ -1,105 +1,79 @@
 pulled_at,platform,ok,message
 2026-10-19T03:48:22+00:00,YouTube,0,YT_API_KEY not set
 2026-10-19T03:48:22+00:00,Instagram,1,3 videos
-2026-10-19T03:48:22+00:00,Facebook,1,2 videos
 2026-10-19T03:48:22+00:00,TikTok,0,TIKTOK_TOKEN not set
 2026-10-19T04:00:24+00:00,YouTube,0,YT_API_KEY not set
 2026-10-19T04:00:24+00:00,Instagram,1,3 videos
-2026-10-19T04:00:24+00:00,Facebook,1,2 videos
 2026-10-19T04:00:24+00:00,TikTok,1,3 videos
 2026-10-19T04:15:14+00:00,YouTube,0,YT_API_KEY not set
 2026-10-19T04:15:14+00:00,Instagram,1,3 videos
-2026-10-19T04:15:14+00:00,Facebook,1,2 videos
 2026-10-19T04:15:14+00:00,TikTok,1,3 videos
 2026-10-19T04:15:26+00:00,YouTube,0,YT_API_KEY not set
 2026-10-19T04:15:26+00:00,Instagram,1,3 videos
-2026-10-19T04:15:26+00:00,Facebook,1,2 videos
 2026-10-19T04:15:26+00:00,TikTok,1,3 videos
 2026-10-19T04:17:13+00:00,YouTube,1,3 videos
 2026-10-19T04:17:13+00:00,Instagram,1,3 videos
-2026-10-19T04:17:13+00:00,Facebook,1,2 videos
 2026-10-19T04:17:13+00:00,TikTok,1,3 videos
 2026-10-19T04:32:44+00:00,YouTube,1,3 videos
 2026-10-19T04:32:44+00:00,Instagram,1,3 videos
-2026-10-19T04:32:44+00:00,Facebook,1,2 videos
 2026-10-19T04:32:44+00:00,TikTok,1,3 videos
 2026-10-19T04:47:44+00:00,YouTube,1,3 videos
 2026-10-19T04:47:44+00:00,Instagram,1,3 videos
-2026-10-19T04:47:44+00:00,Facebook,1,2 videos
 2026-10-19T04:47:44+00:00,TikTok,1,3 videos
 2026-10-19T05:02:44+00:00,YouTube,1,3 videos
 2026-10-19T05:02:44+00:00,Instagram,1,3 videos
-2026-10-19T05:02:44+00:00,Facebook,1,2 videos
 2026-10-19T05:02:44+00:00,TikTok,1,3 videos
 2026-10-19T05:17:44+00:00,YouTube,1,3 videos
 2026-10-19T05:17:44+00:00,Instagram,1,3 videos
-2026-10-19T05:17:44+00:00,Facebook,1,2 videos
 2026-10-19T05:17:44+00:00,TikTok,1,3 videos
 2026-10-19T05:32:44+00:00,YouTube,1,3 videos
 2026-10-19T05:32:44+00:00,Instagram,1,3 videos
-2026-10-19T05:32:44+00:00,Facebook,1,2 videos
 2026-10-19T05:32:44+00:00,TikTok,1,3 videos
 2026-10-19T05:47:44+00:00,YouTube,1,3 videos
 2026-10-19T05:47:44+00:00,Instagram,1,3 videos
-2026-10-19T05:47:44+00:00,Facebook,1,2 videos
 2026-10-19T05:47:44+00:00,TikTok,1,3 videos
 2026-10-19T06:02:44+00:00,YouTube,1,3 videos
 2026-10-19T06:02:44+00:00,Instagram,1,3 videos
-2026-10-19T06:02:44+00:00,Facebook,1,2 videos
 2026-10-19T06:02:44+00:00,TikTok,1,3 videos
 2026-10-19T06:17:44+00:00,YouTube,1,3 videos
 2026-10-19T06:17:44+00:00,Instagram,1,3 videos
-2026-10-19T06:17:44+00:00,Facebook,1,2 videos
 2026-10-19T06:17:44+00:00,TikTok,1,3 videos
 2026-10-19T06:32:44+00:00,YouTube,1,3 videos
 2026-10-19T06:32:44+00:00,Instagram,1,3 videos
-2026-10-19T06:32:44+00:00,Facebook,1,2 videos
 2026-10-19T06:32:44+00:00,TikTok,1,3 videos
 2026-10-19T06:47:44+00:00,YouTube,1,3 videos
 2026-10-19T06:47:44+00:00,Instagram,1,3 videos
-2026-10-19T06:47:44+00:00,Facebook,1,2 videos
 2026-10-19T06:47:44+00:00,TikTok,1,3 videos
 2026-10-19T07:02:44+00:00,YouTube,1,3 videos
 2026-10-19T07:02:44+00:00,Instagram,1,3 videos
-2026-10-19T07:02:44+00:00,Facebook,1,2 videos
 2026-10-19T07:02:44+00:00,TikTok,1,3 videos
 2026-10-19T07:17:44+00:00,YouTube,1,3 videos
 2026-10-19T07:17:44+00:00,Instagram,1,3 videos
-2026-10-19T07:17:44+00:00,Facebook,1,2 videos
 2026-10-19T07:17:44+00:00,TikTok,1,3 videos
 2026-10-19T07:32:44+00:00,YouTube,1,3 videos
 2026-10-19T07:32:44+00:00,Instagram,1,3 videos
-2026-10-19T07:32:44+00:00,Facebook,1,2 videos
 2026-10-19T07:32:44+00:00,TikTok,1,3 videos
 2026-10-19T07:47:44+00:00,YouTube,1,3 videos
 2026-10-19T07:47:44+00:00,Instagram,1,3 videos
-2026-10-19T07:47:44+00:00,Facebook,1,2 videos
 2026-10-19T07:47:44+00:00,TikTok,1,3 videos
 2026-10-19T08:02:44+00:00,YouTube,1,3 videos
 2026-10-19T08:02:44+00:00,Instagram,1,3 videos
-2026-10-19T08:02:44+00:00,Facebook,1,2 videos
 2026-10-19T08:02:44+00:00,TikTok,1,3 videos
 2026-10-19T08:17:44+00:00,YouTube,1,3 videos
 2026-10-19T08:17:44+00:00,Instagram,1,3 videos
-2026-10-19T08:17:44+00:00,Facebook,1,2 videos
 2026-10-19T08:17:44+00:00,TikTok,1,3 videos
 2026-10-19T15:20:44+00:00,YouTube,1,4 videos
 2026-10-19T15:20:44+00:00,Instagram,1,4 videos
-2026-10-19T15:20:44+00:00,Facebook,1,2 videos
 2026-10-19T15:20:44+00:00,TikTok,1,4 videos
 2026-10-19T17:34:09+00:00,YouTube,1,4 videos
 2026-10-19T17:34:09+00:00,Instagram,1,4 videos
-2026-10-19T17:34:09+00:00,Facebook,1,2 videos
 2026-10-19T17:34:09+00:00,TikTok,1,4 videos
 2026-10-19T17:43:55+00:00,YouTube,1,4 videos
 2026-10-19T17:43:55+00:00,Instagram,1,4 videos
-2026-10-19T17:43:55+00:00,Facebook,1,2 videos
 2026-10-19T17:43:55+00:00,TikTok,1,4 videos
 2026-10-19T17:45:43+00:00,YouTube,1,4 videos
 2026-10-19T17:45:43+00:00,Instagram,1,4 videos
-2026-10-19T17:45:43+00:00,Facebook,1,2 videos
 2026-10-19T17:45:43+00:00,TikTok,1,4 videos
 2026-10-19T18:17:43+00:00,YouTube,0,YT_API_KEY not set
 2026-10-19T18:17:43+00:00,Instagram,0,IG_TOKEN not set
-2026-10-19T18:17:43+00:00,Facebook,0,FB_PAGE_TOKEN not set
 2026-10-19T18:17:43+00:00,TikTok,1,4 videos
