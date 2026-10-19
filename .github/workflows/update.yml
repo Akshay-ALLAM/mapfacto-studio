@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "*/30 * * * *"   # every 30 minutes (GitHub may run it a few minutes late)
   workflow_dispatch:          # lets you run it by hand from the Actions tab
+  push:                       # also runs when the code changes (not for the robot's own data commits)
+    branches: [main]
+    paths: ["pipeline/**", ".github/workflows/**", "requirements.txt"]
 
 permissions:
   contents: write
