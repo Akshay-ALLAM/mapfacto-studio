@@ -45,11 +45,13 @@
   const badge = (p, size = 40, cls = "") => PL[p].logo
     ? `<span class="b3d has-logo ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><img src="${PL[p].logo}" alt=""><i class="sheen"></i></span>`
     : `<span class="b3d ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><svg viewBox="0 0 24 24" stroke="#fff">${GLYPH[p]}</svg><i class="sheen"></i></span>`;
-  const probe = (url) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(url); i.onerror = () => ok(null); i.src = url; });
+  // Official icons: list them in icons/icons.json, e.g. {"youtube": "youtube.svg"}. The file always
+  // exists, so there are no failed requests when no icon has been added.
   async function findLogos() {
-    await Promise.all(ORDER.map(async (p) => {
-      PL[p].logo = (await probe(`icons/${PL[p].slug}.svg`)) || (await probe(`icons/${PL[p].slug}.png`));
-    }));
+    try {
+      const m = await (await fetch("icons/icons.json")).json();
+      ORDER.forEach((p) => { if (m[PL[p].slug]) PL[p].logo = `icons/${m[PL[p].slug]}`; });
+    } catch (e) { /* generic badges stay */ }
   }
   const icon = (n, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
   const INSIGHT_ICON = { top: "star", reach: "up", engagement: "heart", growth: "up", platform: "down", error: "plug", missing: "gap", low: "down", stalled: "pause" };
@@ -84,7 +86,7 @@
   const engOK = (e, views) => e !== null && e !== undefined && (views || 0) >= minEng();
   const engTxt = (e, views) => (e === null || e === undefined ? "—"
     : engOK(e, views) ? pct(e) : `<span class="na" title="Only ${fmt(views)} views: under ${minEng()}, too few for a meaningful %">n/a</span>`);
-  const share = (v, views) => ((views > 0 && v < 0.1) ? "<0.1" : v);
+  const share = (v, views) => ((views > 0 && v < 0.1) ? "under 0.1" : v);
   const plural = (n, w) => `${fmt(n)} ${w}${Math.abs(n) === 1 ? "" : "s"}`;
   const verdictChip = (v, label) => `<span class="verdict ${v}">${icon(v)}${esc(label || VERDICT[v])}</span>`;
   const mix = (a, b, t) => {
@@ -452,8 +454,8 @@
   function overview() {
     const T = DATA.totals, P = DATA.platforms;
     const byViews = ORDER.filter((p) => P[p].views).sort((a, b) => P[b].views - P[a].views);
-    const segs = byViews.map((p) => `<div class="scale-seg" style="--c:${PL[p].c}" data-w="${P[p].share}" title="${p}: ${fmt(P[p].views)} views (${share(P[p].share, P[p].views)}%)" data-href="#/${PL[p].slug}" role="link" tabindex="0"></div>`).join("");
-    const ticks = byViews.map((p) => `<div class="scale-tick" data-w="${P[p].share}" style="--c:${PL[p].c}">${P[p].share >= 9 ? `<b><i></i>${p}</b><span>${share(P[p].share, P[p].views)}% · ${fmt(P[p].views)}</span>` : ""}</div>`).join("");
+    const segs = byViews.map((p) => `<div class="scale-seg" style="--c:${PL[p].c};--w:${P[p].share}" title="${p}: ${fmt(P[p].views)} views (${share(P[p].share, P[p].views)}%)" data-href="#/${PL[p].slug}" role="link" tabindex="0"></div>`).join("");
+    const ticks = byViews.map((p) => `<div class="scale-tick" style="--c:${PL[p].c};--w:${P[p].share}">${P[p].share >= 9 ? `<b><i></i>${p}</b><span>${share(P[p].share, P[p].views)}% · ${fmt(P[p].views)}</span>` : ""}</div>`).join("");
     const small = byViews.filter((p) => P[p].share < 9);
     const smallNote = small.length ? `<div class="scale-small">${small.map((p) => `<span style="--c:${PL[p].c}"><i></i><b>${p}</b> ${share(P[p].share, P[p].views)}% · ${fmt(P[p].views)} views</span>`).join(" &nbsp; ")}</div>` : "";
     const cards = ORDER.map((p) => {
@@ -466,7 +468,7 @@
         ${spark(r.timeline, PL[p].c)}
       </a>`;
     }).join("");
-    const tick = (DATA.updates || []).slice(0, 12).map((u) => `<span class="tk">${badge(u.platform, 20, "sm")}<b>${u.is_new ? "New video" : (() => { const m = [["views", u.d_views], ["likes", u.d_likes], ["comments", u.d_comments], ["shares", u.d_shares]].find(([, v]) => v); return m ? `${m[1] > 0 ? "+" : "−"}${plural(Math.abs(m[1]), m[0].slice(0, -1))}` : ""; })()}</b> ${esc(u.title)}</span>`).join("");
+    const tick = (DATA.updates || []).slice(0, 12).map((u) => `<span class="tk">${badge(u.platform, 20, "sm")}<b>${u.is_new ? "New video" : (() => { const m = [["views", u.d_views], ["likes", u.d_likes], ["comments", u.d_comments], ["shares", u.d_shares]].find(([, v]) => v); return m ? `${m[1] > 0 ? "+" : "−"}${plural(Math.abs(m[1]), m[0].slice(0, -1))}` : ""; })()}</b> ${esc(u.title)} <em>on ${u.platform}</em></span>`).join("");
     const ticker = tick ? `<div class="ticker" aria-label="Latest changes"><span class="ticker-label"><span class="pulse"></span>Live</span><div class="ticker-track"><div class="ticker-run">${tick}</div></div></div>` : "";
     $("#view").innerHTML = `<div class="view">
       ${ticker}
@@ -522,7 +524,6 @@
       </section>
     </div>`;
     // animate scale bar
-    requestAnimationFrame(() => requestAnimationFrame(() => $$("[data-w]").forEach((el) => (el.style.width = `calc(${el.dataset.w}% - 2px)`))));
     paintMatrix();
     $$(".seg button").forEach((b) => b.addEventListener("click", () => {
       matrixMetric = b.dataset.metric;

@@ -100,6 +100,8 @@ def main():
             print(("OK  " if row[1] else "ERR ") + f"{row[0]}: {row[2]}")
     build.write_dashboard(conn, DOCS / "data.json")
     print("Wrote", DOCS / "data.json")
+    import assets
+    assets.stamp()  # ?v=<hash> on app.js, styles.css... so a changed file is never served from cache
     import guard  # stop here if anything that looks like a key ended up in a public file
     guard.main()
 
