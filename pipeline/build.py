@@ -15,6 +15,7 @@ TITLE_PRIORITY = {"YouTube": 0, "Instagram": 1, "Facebook": 2, "TikTok": 3}
 DEFAULT_LEN_S = 30
 MAX_POINTS = 300
 UPDATE_EVERY_MIN = 30
+MIN_VIEWS_SHOW_ENG = 50  # under this, an engagement % is noise (1 like on 3 views = 33%)
 
 
 # ------------------------------------------------------------------ helpers
@@ -77,6 +78,13 @@ def video_url(platform, vid):
     }.get(platform)
 
 
+def engagement_all(rows):
+    """Likes + comments + shares over views, across every platform the video is on."""
+    v = rows.views.sum()
+    e = rows[["likes", "comments", "shares"]].fillna(0).sum().sum()
+    return num(e / v * 100, 1) if v else None
+
+
 # ------------------------------------------------------------------ load
 def load(conn):
     s = pd.read_sql_query(
@@ -93,7 +101,13 @@ def load(conn):
     f["followers"] = pd.to_numeric(f["followers"], errors="coerce")
     p["ok"] = pd.to_numeric(p["ok"], errors="coerce").fillna(0).astype(int)
     s["views"] = s["views"].fillna(0)
-    return s.sort_values("pulled_at"), f.sort_values("pulled_at"), p.sort_values("pulled_at")
+    s = s.sort_values("pulled_at")
+    # Views are cumulative and can't really go down. APIs sometimes answer with an older,
+    # cached count; keep the highest value seen so far and count how often that happened.
+    best = s.groupby(["platform", "video_id"]).views.cummax()
+    s.attrs["dips"] = int((s.views < best).sum())
+    s["views"] = best
+    return s, f.sort_values("pulled_at"), p.sort_values("pulled_at")
 
 
 def status_of(p):
@@ -114,6 +128,7 @@ def status_of(p):
 # ------------------------------------------------------------------ build
 def build(conn):
     s, f, p = load(conn)
+    dips = s.attrs.get("dips", 0)
     now = pd.Timestamp.now(tz="UTC")
     last_pull = p.pulled_at.max() if len(p) else None
     status = status_of(p)
@@ -187,28 +202,32 @@ def build(conn):
         allv = allv.iloc[np.linspace(0, len(allv) - 1, MAX_POINTS).astype(int)]
     timeline["All"] = [[iso(t), int(v)] for t, v in allv.items()]
 
-    # views gained per Paris day: today's last value minus the previous day's last value.
-    # A video's first tracked day only counts if it was published that day (otherwise its
-    # earlier views would look like they were all gained on the day tracking started).
+    # views gained per Paris day = that day's last value minus the previous day's last value.
+    # Each platform's first tracked day is only the baseline (we can't know which of the views
+    # it already had were gained that day), so it is left out of the chart. A video that was
+    # posted after tracking began starts from 0, so its first views do count.
     d = s.copy()
-    d["day"] = d.pulled_at.dt.tz_convert("Europe/Paris").dt.strftime("%Y-%m-%d")
-    d["pub_day"] = d.published_at.dt.tz_convert("Europe/Paris").dt.strftime("%Y-%m-%d")
+    paris = lambda x: x.dt.tz_convert("Europe/Paris").dt.strftime("%Y-%m-%d")
+    d["day"] = paris(d.pulled_at)
+    pl_start = d.groupby("platform").pulled_at.min()
+    pl_day0 = d.groupby("platform").day.min()
     last = d.groupby(ids + ["day"]).tail(1).sort_values("day")
     rows_d = []
     for (pl, vid), g in last.groupby(ids):
-        prev_v = None
+        born_tracked = bool(g.published_at.iloc[0] > pl_start[pl])
+        prev_v = 0 if born_tracked else None
         for _, r in g.iterrows():
-            if prev_v is None:
-                gain = r.views if r.day == r.pub_day else None
-            else:
-                gain = max(0, r.views - prev_v)
+            if prev_v is not None and r.day != pl_day0[pl]:
+                rows_d.append((pl, r.day, max(0, r.views - prev_v)))
             prev_v = r.views
-            if gain is not None:
-                rows_d.append((pl, r.day, gain))
     dg = pd.DataFrame(rows_d, columns=["platform", "day", "gain"])
-    all_days = sorted(d["day"].unique())
-    daily = {pl: [[day, int(dg[(dg.platform == pl) & (dg.day == day)].gain.sum())] for day in all_days]
-             for pl in PLATFORMS if (s.platform == pl).any()}
+    daily = {}
+    for pl in PLATFORMS:
+        if not (s.platform == pl).any():
+            continue
+        days = sorted(x for x in d["day"].unique() if x > pl_day0[pl])
+        daily[pl] = [[day, int(dg[(dg.platform == pl) & (dg.day == day)].gain.sum())] for day in days]
+    baseline_day = min(pl_day0.values) if len(pl_day0) else None
 
     # per platform summary + verdict
     total_views = latest.views.sum()
@@ -272,7 +291,8 @@ def build(conn):
         vids.append(dict(key=k, title=m.title, posted=iso(m.posted),
                          thumb=f"https://i.ytimg.com/vi/{yt_ids[k]}/mqdefault.jpg" if k in yt_ids else None,
                          total=num(sum(x["views"] or 0 for x in per.values())),
-                         g24=num(sum(x["g24"] or 0 for x in per.values())), per=per))
+                         g24=num(sum(x["g24"] or 0 for x in per.values())), per=per,
+                         engagement=engagement_all(latest[latest.key == k])))
 
     # insights
     good, bad = [], []
@@ -297,10 +317,18 @@ def build(conn):
             bad.append(dict(kind="platform", platform=pl, text=f"**{pl}**: {r['reason']}."))
         elif not status[pl]["ok"]:
             bad.append(dict(kind="error", platform=pl, text=f"**{pl}** update failed: {short(status[pl]['message'], 80)}."))
+    gaps = {}
     for v in vids:
         missing = [pl for pl in live if pl not in v["per"]]
         if missing and len(v["per"]) >= 2:
-            bad.append(dict(kind="missing", text=f"**{short(v['title'], 50)}** isn't on {', '.join(missing)} yet."))
+            gaps.setdefault(tuple(missing), []).append(short(v["title"], 40))
+    for missing, titles in gaps.items():
+        where = " or ".join(missing)
+        if len(titles) == 1:
+            text = f"**{titles[0]}** isn't on {where} yet."
+        else:
+            text = f"**{len(titles)} videos** aren't on {where} yet: {', '.join(titles)}."
+        bad.append(dict(kind="missing", platform=missing[0] if len(missing) == 1 else None, text=text))
     old = latest[latest.published_at < cutoff]
     for pl, g in old.groupby("platform"):
         if len(g) >= 3:
@@ -338,6 +366,7 @@ def build(conn):
             g = [per_pl[pl][t] - per_pl[pl][prev_t] for pl in per_pl
                  if starts[pl] and starts[pl] <= prev_t and t in per_pl[pl] and prev_t in per_pl[pl]]
             e["gain"] = int(sum(g)) if g else None
+        e["mins"] = None if prev_t is None else round((pd.Timestamp(t) - pd.Timestamp(prev_t)).total_seconds() / 60)
         prev_t = t if t in per_pl.get(next(iter(per_pl)), {}) else prev_t
 
     eng_all = latest[["likes", "comments", "shares"]].fillna(0).sum().sum()
@@ -348,7 +377,9 @@ def build(conn):
                   videos=len(vids), likes=num(latest.likes.sum()), comments=num(latest.comments.sum()))
     return {**base, "empty": False, "partial24": partial24, "totals": totals, "platforms": rows,
             "videos": vids, "timeline_all": timeline["All"], "insights": dict(good=good, bad=bad),
-            "updates": updates[:30], "log": log, "history_since": iso(s.pulled_at.min())}
+            "updates": updates[:30], "log": log, "history_since": iso(s.pulled_at.min()),
+            "baseline_day": baseline_day, "dips_ignored": dips,
+            "min_views_engagement": MIN_VIEWS_SHOW_ENG}
 
 
 def write_dashboard(conn, path):

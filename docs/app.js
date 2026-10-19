@@ -79,6 +79,11 @@
     if (n === 0) return `<span class="delta zero">no change${suffix ? " " + suffix : ""}</span>`;
     return `<span class="delta ${n < 0 ? "neg" : ""}">${n > 0 ? "+" : "−"}${fmt(Math.abs(n))}${suffix ? " " + suffix : ""}</span>`;
   }
+  // An engagement % on a handful of views is noise (1 like on 3 views = 33%)
+  const minEng = () => DATA?.min_views_engagement ?? 50;
+  const engOK = (e, views) => e !== null && e !== undefined && (views || 0) >= minEng();
+  const engTxt = (e, views) => (e === null || e === undefined ? "—"
+    : engOK(e, views) ? pct(e) : `<span class="na" title="Only ${fmt(views)} views: under ${minEng()}, too few for a meaningful %">n/a</span>`);
   const share = (v, views) => ((views > 0 && v < 0.1) ? "<0.1" : v);
   const plural = (n, w) => `${fmt(n)} ${w}${Math.abs(n) === 1 ? "" : "s"}`;
   const verdictChip = (v) => `<span class="verdict ${v}">${icon(v)}${VERDICT[v]}</span>`;
@@ -157,22 +162,49 @@
 
   // ---------------------------------------------------------------- data
   let DATA = null, route = "overview", charts = [];
+  let checkedAt = null, busy = false;
   async function load(manual) {
-    const btn = $("#reload");
-    if (manual) btn.classList.add("spinning");
+    const btn = $("#reload"), label = btn.querySelector(".btn-label");
+    if (busy) return;
+    busy = true;
+    const t0 = performance.now();
+    if (manual) { btn.classList.add("spinning"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); if (label) label.textContent = "Checking…"; }
+    let msg = "";
     try {
       const r = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const next = await r.json();
       const changed = !DATA || next.generated_at !== DATA.generated_at;
+      const hadData = !!DATA;
       DATA = next;
-      if (changed || manual) render();
+      checkedAt = new Date();
+      if (changed) render();
+      msg = changed && hadData ? "New numbers loaded" : "Already up to date";
     } catch (e) {
-      $("#view").innerHTML = `<div class="notice">The dashboard couldn't load its data file (${esc(e.message)}). It appears after the first automatic update has run.</div>`;
+      msg = "Couldn't reach the data";
+      if (!DATA) $("#view").innerHTML = `<div class="notice">The dashboard couldn't load its data file (${esc(e.message)}). It appears after the first automatic update has run.</div>`;
     } finally {
-      setTimeout(() => btn.classList.remove("spinning"), 500);
-      tickLive();
+      // keep the spinner visible long enough to be noticed
+      const wait = manual ? Math.max(0, 650 - (performance.now() - t0)) : 0;
+      setTimeout(() => {
+        btn.classList.remove("spinning"); btn.disabled = false; btn.removeAttribute("aria-busy");
+        if (manual) {
+          if (label) label.textContent = msg === "New numbers loaded" ? "Updated" : msg === "Already up to date" ? "Up to date" : "Retry";
+          btn.classList.add("done");
+          toast(msg === "Already up to date" ? `Already up to date. The robot checks the platforms every ${DATA?.update_every_min || 30} min.` : msg + ".");
+          setTimeout(() => { btn.classList.remove("done"); if (label) label.textContent = "Reload"; }, 2200);
+        }
+        busy = false;
+        tickLive();
+      }, wait);
     }
+  }
+  function toast(text) {
+    let el = $("#toast");
+    if (!el) { el = document.createElement("div"); el.id = "toast"; el.className = "toast"; el.setAttribute("role", "status"); document.body.append(el); }
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), 3200);
   }
 
   function tickLive() {
@@ -184,7 +216,8 @@
     $("#pulse").classList.toggle("stale", stale);
     $("#liveText").innerHTML = stale
       ? `Last update ${ago(last)}<span class="long">: the automatic update may be paused</span>`
-      : `Updated ${ago(last)}<span class="long"> · next in about ${Math.max(1, next)} min</span>`;
+      : `Updated ${ago(last)}<span class="long"> · next in about ${Math.max(1, next)} min${checkedAt ? ` · checked ${timeFmt.format(checkedAt)}` : ""}</span>`;
+    $("#live").title = `Numbers from ${dayTime(last)}${checkedAt ? `. Page last checked ${timeFmt.format(checkedAt)}` : ""}`;
   }
 
   // ---------------------------------------------------------------- nav
@@ -216,6 +249,32 @@
     },
     legend: { top: 0, left: 0, icon: "circle", itemWidth: 10, itemHeight: 10, itemGap: 16, textStyle: { color: INK2, fontSize: 13 } },
   });
+  const hm = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const timeAxis = () => ({
+    type: "time", ...axisCommon, splitLine: { show: false }, minInterval: 3600 * 1000, splitNumber: 5,
+    axisLabel: { color: INK3, fontSize: 12, hideOverlap: true, formatter: (v) => {
+      const d = new Date(v), t = hm.format(d);
+      return t === "00:00" ? dayFmt.format(d) : t;
+    } },
+  });
+  // Y axis with breathing room: small counts start at 0, big cumulative counts get padding
+  const niceStep = (span) => {
+    const raw = Math.max(1, span / 5), m = 10 ** Math.floor(Math.log10(raw));
+    return [1, 2, 5, 10].map((k) => k * m).find((x) => x >= raw);
+  };
+  const yRange = ({ min, max }) => {
+    if (max < 100) { const hi = Math.max(5, max * 1.3); const st = niceStep(hi); return [0, Math.ceil(hi / st) * st, st]; }
+    const lo = Math.max(0, min - Math.max((max - min) * 0.6, max * 0.03)), hi = max + Math.max((max - min) * 0.25, max * 0.01);
+    const st = niceStep(hi - lo);
+    return [Math.max(0, Math.floor(lo / st) * st), Math.ceil(hi / st) * st, st];
+  };
+  // y axis for line charts: 0-based when several platforms share it, padded otherwise
+  const yAxisFor = (series, zero) => {
+    const vals = series.flatMap((x) => x.data.map((d) => d[1]));
+    const ext = { min: zero ? 0 : Math.min(...vals), max: Math.max(...vals) };
+    const [min, max, interval] = yRange(ext);
+    return { type: "value", ...axisCommon, min, max, interval };
+  };
   const axisCommon = { axisLine: { lineStyle: { color: LINE } }, axisTick: { show: false }, axisLabel: { color: INK3, fontSize: 12 }, splitLine: { lineStyle: { color: LINE, type: [4, 4] } } };
   function mount(id, option) {
     const el = document.getElementById(id);
@@ -251,15 +310,19 @@
       ...baseChart(), legend: platforms.length > 1 ? baseChart().legend : { show: false },
       grid: { ...baseChart().grid, right: platforms.length > 1 ? 86 : 18, top: platforms.length > 1 ? 44 : 16 },
       tooltip: { ...baseChart().tooltip, formatter: timeTooltip },
-      xAxis: { type: "time", ...axisCommon, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, hideOverlap: true, formatter: { day: "{d} {MMM}", hour: "{HH}:{mm}" } } },
-      yAxis: { type: "value", ...axisCommon, scale: platforms.length === 1, minInterval: 1 },
+      xAxis: timeAxis(),
+      yAxis: yAxisFor(series, platforms.length > 1),
       series,
     });
   }
 
   function dailyChart(id, platforms) {
     const days = [...new Set(platforms.flatMap((p) => (DATA.platforms[p].daily || []).map((d) => d[0])))].sort();
-    if (!days.length) return void (document.getElementById(id).outerHTML = `<p class="empty-note">Daily totals appear after the first day of updates.</p>`);
+    if (!days.length) {
+      const b = DATA.baseline_day ? new Date(DATA.baseline_day + "T12:00:00Z") : null;
+      const next = b ? new Date(b.getTime() + 864e5) : null;
+      return void (document.getElementById(id).outerHTML = `<p class="empty-note">${b ? `${dayFmt.format(b)} is the starting point: tracking began that day, so the views a video already had aren't counted as gained. The first full day appears after ${dayFmt.format(next)}.` : "Daily totals appear after the first full day of updates."}</p>`);
+    }
     const label = (d) => dayFmt.format(new Date(d + "T12:00:00Z"));
     mount(id, {
       ...baseChart(), legend: platforms.length > 1 ? baseChart().legend : { show: false },
@@ -305,16 +368,27 @@
     charts[charts.length - 1]?.resize();
   }
 
+  // The first update is only the baseline (no bar). After a gap (an update that didn't run),
+  // one bar holds several hours of views; those bars are capped so they don't flatten the rest.
   function logChart(id) {
-    const log = (DATA.log || []).filter((e) => e.gain !== null && e.gain !== undefined);
+    const every = DATA.update_every_min || 30;
+    const log = (DATA.log || []).filter((e) => e.gain !== null && e.gain !== undefined)
+      .map((e) => ({ ...e, gain: Math.max(0, e.gain), gap: (e.mins || 0) > every * 2.5 }));
     if (log.length < 2) return void (document.getElementById(id).outerHTML = `<p class="empty-note">Fills in after a few automatic updates.</p>`);
+    const normal = log.filter((e) => !e.gap).map((e) => e.gain).sort((a, b) => a - b);
+    const p95 = normal.length ? normal[Math.min(normal.length - 1, Math.floor(normal.length * 0.95))] : 10;
+    const cap = Math.max(10, Math.ceil(p95 * 1.6 / 5) * 5);
+    const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? (m % 60) + " min" : ""}` : `${m} min`);
     mount(id, {
-      ...baseChart(), legend: { show: false }, grid: { left: 4, right: 8, top: 12, bottom: 4, containLabel: true },
+      ...baseChart(), legend: { show: false }, grid: { left: 4, right: 8, top: 22, bottom: 4, containLabel: true },
       tooltip: { ...baseChart().tooltip, axisPointer: { type: "shadow", shadowStyle: { color: "rgba(74,163,223,.08)" } },
-        formatter: (ps) => `<b>${dayTime(ps[0].value[0])}</b><br>+${fmt(ps[0].value[1])} views` },
-      xAxis: { type: "time", ...axisCommon, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, hideOverlap: true, formatter: { day: "{d} {MMM}", hour: "{HH}:{mm}" } } },
-      yAxis: { type: "value", ...axisCommon, minInterval: 1 },
-      series: [{ type: "bar", barMaxWidth: 10, barMinWidth: 3, data: log.map((e) => [e.at, Math.max(0, e.gain)]),
+        formatter: (ps) => { const e = log[ps[0].dataIndex]; return `<b>${dayTime(e.at)}</b><br>+${fmt(e.gain)} views${e.mins ? ` over ${dur(e.mins)}` : ""}${e.gap ? "<br><span style='color:#566f84'>Catch-up after updates were skipped</span>" : ""}`; } },
+      xAxis: timeAxis(),
+      yAxis: { type: "value", ...axisCommon, minInterval: 1, max: cap },
+      series: [{ type: "bar", barMaxWidth: 10, barMinWidth: 3,
+        data: log.map((e) => ({ value: [e.at, Math.min(e.gain, cap)],
+          itemStyle: e.gain > cap || e.gap ? { color: "#9fd0f2", borderColor: "#4aa3df", borderWidth: 1, borderType: "dashed" } : undefined,
+          label: e.gain > cap ? { show: true, position: "top", formatter: `${fmt(e.gain)}↑`, color: INK2, fontSize: 11, fontWeight: 700 } : undefined })),
         itemStyle: { color: "#4aa3df", borderRadius: [3, 3, 0, 0] }, emphasis: { itemStyle: { color: "#1f6fa8" } } }],
     });
   }
@@ -335,7 +409,7 @@
     { id: "views", label: "Views", get: (x) => x.views },
     { id: "g24", label: "Last 24 h", get: (x) => x.g24 },
     { id: "d_views", label: "Latest update", get: (x) => x.d_views },
-    { id: "engagement", label: "Engagement", get: (x) => x.engagement, pct: true },
+    { id: "engagement", label: "Engagement", get: (x) => (engOK(x.engagement, x.views) ? x.engagement : null), pct: true },
   ];
   let matrixMetric = "views";
   function matrixHTML() {
@@ -349,14 +423,15 @@
         const x = v.per[p];
         if (!x) return `<td class="cell none" title="${esc(v.title)} isn't posted on ${p}">not posted</td>`;
         const val = M.get(x);
-        if (val === null || val === undefined) return `<td class="cell none">—</td>`;
+        if (val === null || val === undefined) return M.pct ? `<td class="cell none">${engTxt(x.engagement, x.views)}</td>` : `<td class="cell none">—</td>`;
         const t = Math.sqrt(Math.max(0, val) / max), bg = rampColor(t), fg = t > 0.62 ? "#fff" : INK;
         const txt = M.pct ? pct(val) : (M.id === "views" ? fmt(val) : (val > 0 ? "+" : "") + fmt(val));
         return `<td class="cell" data-bg="${bg}" data-fg="${fg}" style="transition-delay:${REDUCED ? 0 : 60 + (i++) * 28}ms" title="${esc(v.title)} on ${p}: ${txt} ${M.label.toLowerCase()}">${txt}</td>`;
       }).join("");
       const tot = M.pct ? null : ORDER.reduce((a, p) => a + (v.per[p] ? M.get(v.per[p]) || 0 : 0), 0);
+      const totTxt = M.pct ? engTxt(v.engagement, v.total) : (M.id === "views" ? fmt(tot) : (tot > 0 ? "+" : "") + fmt(tot));
       const thumb = v.thumb ? `<span class="thumb" style="background-image:url('${v.thumb}')"></span>` : `<span class="thumb">${icon("pin")}</span>`;
-      return `<tr><td class="v">${thumb}<span><span class="vtitle">${esc(v.title)}</span><br><span class="vdate">Posted ${dayTime(v.posted)}</span></span></td>${cells}<td class="cell total">${tot === null ? "—" : (M.id === "views" ? fmt(tot) : (tot > 0 ? "+" : "") + fmt(tot))}</td></tr>`;
+      return `<tr><td class="v">${thumb}<span><span class="vtitle">${esc(v.title)}</span><br><span class="vdate">Posted ${dayTime(v.posted)}</span></span></td>${cells}<td class="cell total" title="${M.pct ? "Likes, comments and shares on every platform, divided by all its views" : ""}">${totTxt}</td></tr>`;
     }).join("");
     return `<p class="swipe-hint">Swipe sideways to see every platform.</p><div class="matrix-wrap"><table class="matrix"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
       <div class="legend-ramp"><span>Less</span><span class="ramp"></span><span>More</span><span class="nopost"></span><span>Not posted there</span></div>`;
@@ -480,11 +555,15 @@
     const vids = DATA.videos.filter((v) => v.per[p]);
     const retention = p === "YouTube" || p === "Instagram";
     const kpi = (label, val, extra = "") => `<div class="kpi"><span>${label}</span><b>${val}</b>${extra}</div>`;
+    const na = (why) => `<b class="na-big">n/a</b><span class="delta zero">${why}</span>`;
+    const kpiNA = (label, why) => `<div class="kpi kpi-na"><span>${label}</span>${na(why)}</div>`;
+    const note = (t) => `<span class="delta zero">${t}</span>`;
+    const RET_WHY = { YouTube: "needs YouTube Analytics login", TikTok: "TikTok doesn't share it", Facebook: "not shared for Reels yet", Instagram: "no data yet" };
     const list = vids.map((v) => {
       const x = v.per[p];
       const thumb = v.thumb ? `<span class="thumb" style="background-image:url('${v.thumb}')"></span>` : `<span class="thumb">${icon("pin")}</span>`;
       return `<div class="vrow" style="--c:${c}">${thumb}<div><div class="vtitle">${esc(v.title)}</div><div class="vdate">Posted ${dayTime(x.posted)}${x.duration ? ` · ${x.duration}s` : ""}</div>
-        <div class="vstats"><span><b>${fmt(x.likes)}</b> ${x.likes === 1 ? "like" : "likes"}</span><span><b>${fmt(x.comments)}</b> ${x.comments === 1 ? "comment" : "comments"}</span>${x.shares !== null ? `<span><b>${fmt(x.shares)}</b> ${x.shares === 1 ? "share" : "shares"}</span>` : ""}<span><b>${pct(x.engagement)}</b> engagement</span>${retention && x.retention !== null ? `<span><b>${x.retention}%</b> retention</span>` : ""}</div></div>
+        <div class="vstats"><span><b>${fmt(x.likes)}</b> ${x.likes === 1 ? "like" : "likes"}</span><span><b>${fmt(x.comments)}</b> ${x.comments === 1 ? "comment" : "comments"}</span>${x.shares !== null ? `<span><b>${fmt(x.shares)}</b> ${x.shares === 1 ? "share" : "shares"}</span>` : ""}<span><b>${engTxt(x.engagement, x.views)}</b> engagement</span>${retention && x.retention !== null ? `<span><b>${x.retention}%</b> retention</span>` : ""}</div></div>
         <div class="vbig"><b>${fmt(x.views)}</b><span class="vdate">views ${delta(x.g24)} in 24 h</span><br><a href="${x.url}" target="_blank" rel="noopener">${PL[p].watch} ${icon("ext").replace('class=""', 'style="width:13px;height:13px;vertical-align:-2px"')}</a></div></div>`;
     }).join("");
     const st = DATA.status[p];
@@ -499,12 +578,13 @@
       ${r.videos ? `
       <section class="section kpis">
         ${kpi("Total views", count(r.views, `k-v-${p}`), delta(r.d_last, "latest update"))}
-        ${kpi("Followers", count(r.followers, `k-f-${p}`), delta(r.followers_d24, "in 24 h"))}
-        ${kpi("Views in 24 h", count(r.g24, `k-g-${p}`), `<span class="delta zero">${fmt(r.share)}% of all views</span>`)}
-        ${kpi("Views per video", count(r.vpv, `k-vpv-${p}`), `<span class="delta zero">${r.videos} videos</span>`)}
-        ${kpi("Engagement", r.engagement === null ? "—" : count(r.engagement, `k-e-${p}`, 1, "%"), `<span class="delta zero">likes, comments, shares</span>`)}
-        ${retention ? kpi("Avg retention", r.retention === null ? "—" : count(r.retention, `k-r-${p}`, 1, "%"), `<span class="delta zero">${r.retention === null ? (p === "YouTube" ? "needs Analytics login" : "no data yet") : "watch time ÷ length"}</span>`)
-                    : kpi("Likes", count(r.likes, `k-l-${p}`), `<span class="delta zero">${plural(r.comments, "comment")}</span>`)}
+        ${kpi("Views in 24 h", count(r.g24, `k-g-${p}`), note(`${plural(r.videos, "video")} · ${share(r.share, r.views)}% of all views`))}
+        ${r.followers === null || r.followers === undefined ? kpiNA("Followers", "not available") : kpi("Followers", count(r.followers, `k-f-${p}`), delta(r.followers_d24, "in 24 h"))}
+        ${kpi("Likes", count(r.likes, `k-l-${p}`), note("on all videos"))}
+        ${kpi("Comments", count(r.comments, `k-c-${p}`), note("on all videos"))}
+        ${r.shares === null || r.shares === undefined ? kpiNA("Shares", `not in ${p}'s data`) : kpi("Shares", count(r.shares, `k-s-${p}`), note("on all videos"))}
+        ${!engOK(r.engagement, r.views) ? kpiNA("Engagement", r.engagement === null ? "no views yet" : `needs ${minEng()}+ views (has ${fmt(r.views)})`) : kpi("Engagement", count(r.engagement, `k-e-${p}`, 1, "%"), note("likes, comments, shares ÷ views"))}
+        ${r.retention === null || r.retention === undefined ? kpiNA("Avg retention", RET_WHY[p]) : kpi("Avg retention", count(r.retention, `k-r-${p}`, 1, "%"), note("watch time ÷ length"))}
       </section>
       <section class="section grid-2">
         <div class="panel"><h2>Views over time</h2><p class="sub">${p} total, from every automatic update</p><div class="chart" id="c-p-views"></div></div>
