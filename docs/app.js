@@ -33,6 +33,15 @@
     pin: '<path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
     ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   };
+  // Original glossy 3D badges: platform colour + a generic symbol (not the platforms' logos)
+  const GLYPH = {
+    YouTube: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="1.9"/><path d="M10 8.6v6.8l5.6-3.4z" fill="#fff" stroke="none"/>',
+    TikTok: '<path d="M9 17.4V7.2l9-2.2v10.4" fill="none" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="17.4" r="2.3" fill="#fff" stroke="none"/><circle cx="16" cy="15.4" r="2.3" fill="#fff" stroke="none"/>',
+    Instagram: '<path d="M4.5 8.6h3.1l1.6-2.1h5.6l1.6 2.1h3.1v9.9h-15z" fill="none" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="13.4" r="3.2" fill="none" stroke-width="1.9"/>',
+    Facebook: '<circle cx="9" cy="9.2" r="2.8" fill="none" stroke-width="1.9"/><path d="M3.9 18.3c.6-3 2.6-4.7 5.1-4.7s4.5 1.7 5.1 4.7" fill="none" stroke-width="1.9" stroke-linecap="round"/><circle cx="16.6" cy="9.9" r="2.2" fill="none" stroke-width="1.9"/><path d="M15.6 13.7c2.2-.2 4 1.2 4.5 4" fill="none" stroke-width="1.9" stroke-linecap="round"/>',
+  };
+  const badge = (p, size = 40, cls = "") =>
+    `<span class="b3d ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><svg viewBox="0 0 24 24" stroke="#fff">${GLYPH[p]}</svg></span>`;
   const icon = (n, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
   const INSIGHT_ICON = { top: "star", reach: "up", engagement: "heart", growth: "up", platform: "down", error: "plug", missing: "gap", low: "down", stalled: "pause" };
 
@@ -177,7 +186,7 @@
     for (const p of ORDER) {
       const s = st[p];
       const state = s ? `<span class="state" style="color:${s.ok ? "var(--good)" : "var(--bad)"}" title="${esc(s.message)}">${s.ok ? "●" : "!"}</span>` : "";
-      h += item(PL[p].slug, p, `<span class="dot" style="--c:${PL[p].c}"></span>`, state);
+      h += item(PL[p].slug, p, badge(p, 24, "sm"), state);
     }
     $("#nav").innerHTML = h;
     $("#railFoot").innerHTML = DATA?.history_since
@@ -323,7 +332,7 @@
     const M = METRICS.find((m) => m.id === matrixMetric);
     const vals = DATA.videos.flatMap((v) => ORDER.map((p) => (v.per[p] ? M.get(v.per[p]) : null))).filter((x) => x !== null && x !== undefined);
     const max = Math.max(1, ...vals);
-    const head = `<tr><th scope="col">Video</th>${ORDER.map((p) => `<th scope="col"><i style="--c:${PL[p].c}"></i>${p}</th>`).join("")}<th scope="col">All</th></tr>`;
+    const head = `<tr><th scope="col">Video</th>${ORDER.map((p) => `<th scope="col"><span class="th-pl">${badge(p, 22, "sm")}${p}</span></th>`).join("")}<th scope="col">All</th></tr>`;
     let i = 0;
     const rows = DATA.videos.map((v) => {
       const cells = ORDER.map((p) => {
@@ -353,7 +362,7 @@
       const chips = u.is_new ? `<span class="chip views">New video · ${fmt(u.views)} views</span>` :
         [["views", u.d_views], ["likes", u.d_likes], ["comments", u.d_comments], ["shares", u.d_shares]]
           .filter(([, v]) => v).map(([k, v]) => `<span class="chip ${k === "views" ? "views" : ""}">${v > 0 ? "+" : "−"}${plural(Math.abs(v), k.slice(0, -1))}</span>`).join("");
-      return `<li style="--c:${PL[u.platform].c}"><span class="mk"></span><div><div class="what">${esc(u.title)}</div><div class="pl">${u.platform} · now ${fmt(u.views)} views</div><div class="chips">${chips}</div></div><span class="when">${u.at ? timeFmt.format(new Date(u.at)) : ""}</span></li>`;
+      return `<li style="--c:${PL[u.platform].c}">${badge(u.platform, 28, "sm")}<div><div class="what">${esc(u.title)}</div><div class="pl">${u.platform} · now ${fmt(u.views)} views</div><div class="chips">${chips}</div></div><span class="when">${u.at ? timeFmt.format(new Date(u.at)) : ""}</span></li>`;
     }).join("")}</ul>`;
   }
   function insightsHTML(list, kind) {
@@ -363,7 +372,7 @@
   function connectionsHTML() {
     return `<div class="conn">${ORDER.map((p) => {
       const s = DATA.status[p];
-      return `<div class="conn-item"><b><span class="dot" style="width:9px;height:9px;border-radius:50%;background:${PL[p].c};display:inline-block"></span>${p}
+      return `<div class="conn-item"><b>${badge(p, 24, "sm")}${p}
         <span class="${s.ok ? "ok" : "err"}" style="margin-left:auto">${s.ok ? "Connected" : "Problem"}</span></b>
         <p>${s.ok ? `Last update ${ago(s.at)} · ${esc(s.message)}` : `${esc(s.message)}${s.last_ok ? `. Last good update ${ago(s.last_ok)}` : ""}`}</p></div>`;
     }).join("")}</div>`;
@@ -381,7 +390,7 @@
       const r = P[p];
       return `<a class="pcard" href="#/${PL[p].slug}" style="--c:${PL[p].c}" aria-label="${p}: ${fmt(r.views)} views, ${VERDICT[r.verdict]}">
         <span class="pcard-edge"></span>
-        <div class="pcard-head"><span class="pcard-name">${p}</span>${verdictChip(r.verdict)}</div>
+        <div class="pcard-head">${badge(p, 42)}<span class="pcard-name">${p}</span>${verdictChip(r.verdict)}</div>
         <div class="pcard-num">${count(r.views, "pv-" + p)}</div>
         <div class="pcard-meta"><span>views · ${delta(r.d_last)}</span><span>${fmt(r.followers)} followers</span></div>
         ${spark(r.timeline, PL[p].c)}
@@ -394,6 +403,7 @@
             <p class="hero-kicker">MapFacto has been watched</p>
             <p class="hero-number">${count(T.views, "total")}<small>times</small></p>
             <p class="hero-kicker" style="margin-top:10px">${delta(T.d_last, "views")} in the latest update, ${dayTime(DATA.last_pull)}</p>
+            <div class="hero-platforms">${ORDER.map((p) => `<a class="hp" href="#/${PL[p].slug}">${badge(p, 30, "sm")}<span>${p}</span><i class="${DATA.status[p].ok ? "ok" : "err"}" title="${DATA.status[p].ok ? "Connected" : "Problem"}"></i></a>`).join("")}</div>
           </div>
           <div class="hero-stats">
             <div class="hstat"><b>${count(T.followers, "fol")}</b><span>followers ${delta(T.followers_d24)}</span></div>
@@ -463,7 +473,7 @@
       ${!st.ok ? `<div class="notice"><b>${p} didn't answer the last update:</b> ${esc(st.message)}. Showing the last numbers that came through${st.last_ok ? ` (${ago(st.last_ok)})` : ""}.</div>` : ""}
       <section class="panel pheader" style="--c:${c}">
         <span class="pheader-edge"></span>
-        <div class="pheader-row"><h2>${p}</h2>${verdictChip(r.verdict)}<span class="spacer" style="flex:1"></span>
+        <div class="pheader-row">${badge(p, 76, "float")}<h2>${p}</h2>${verdictChip(r.verdict)}<span class="spacer" style="flex:1"></span>
           <a class="btn" href="${PL[p].url}" target="_blank" rel="noopener">${PL[p].handle} ${icon("ext")}</a></div>
         <p class="reason">${esc(r.reason)}.</p>
       </section>
@@ -518,6 +528,7 @@
     document.title = p ? `${p} · MapFacto Studio` : "MapFacto Studio";
     p ? platformPage(p) : overview();
     countUp($("#view"));
+    window.MF_MOTION?.after($("#view"));
     if (FINE && !REDUCED) $$(".pcard").forEach((card) => card.addEventListener("pointermove", (e) => {
       const b = card.getBoundingClientRect();
       card.style.setProperty("--mx", `${e.clientX - b.left}px`);
@@ -525,7 +536,11 @@
     }));
   }
 
-  addEventListener("hashchange", () => { render(); scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" }); });
+  addEventListener("hashchange", () => {
+    const lenis = window.MF_MOTION?.lenis;
+    lenis ? lenis.scrollTo(0, { immediate: true }) : scrollTo({ top: 0 });
+    render();
+  });
   addEventListener("DOMContentLoaded", () => {
     contours();
     renderNav();
