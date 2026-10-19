@@ -40,8 +40,17 @@
     Instagram: '<path d="M4.5 8.6h3.1l1.6-2.1h5.6l1.6 2.1h3.1v9.9h-15z" fill="none" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="13.4" r="3.2" fill="none" stroke-width="1.9"/>',
     Facebook: '<circle cx="9" cy="9.2" r="2.8" fill="none" stroke-width="1.9"/><path d="M3.9 18.3c.6-3 2.6-4.7 5.1-4.7s4.5 1.7 5.1 4.7" fill="none" stroke-width="1.9" stroke-linecap="round"/><circle cx="16.6" cy="9.9" r="2.2" fill="none" stroke-width="1.9"/><path d="M15.6 13.7c2.2-.2 4 1.2 4.5 4" fill="none" stroke-width="1.9" stroke-linecap="round"/>',
   };
-  const badge = (p, size = 40, cls = "") =>
-    `<span class="b3d ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><svg viewBox="0 0 24 24" stroke="#fff">${GLYPH[p]}</svg></span>`;
+  // If you upload a platform's official icon to docs/icons/<platform>.svg (or .png),
+  // it replaces the generic symbol automatically, inside the same 3D tile.
+  const badge = (p, size = 40, cls = "") => PL[p].logo
+    ? `<span class="b3d has-logo ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><img src="${PL[p].logo}" alt=""></span>`
+    : `<span class="b3d ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><svg viewBox="0 0 24 24" stroke="#fff">${GLYPH[p]}</svg></span>`;
+  const probe = (url) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(url); i.onerror = () => ok(null); i.src = url; });
+  async function findLogos() {
+    await Promise.all(ORDER.map(async (p) => {
+      PL[p].logo = (await probe(`icons/${PL[p].slug}.svg`)) || (await probe(`icons/${PL[p].slug}.png`));
+    }));
+  }
   const icon = (n, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
   const INSIGHT_ICON = { top: "star", reach: "up", engagement: "heart", growth: "up", platform: "down", error: "plug", missing: "gap", low: "down", stalled: "pause" };
 
@@ -545,7 +554,7 @@
     contours();
     renderNav();
     $("#reload").addEventListener("click", () => load(true));
-    load(false);
+    findLogos().then(() => { renderNav(); load(false); });
     setInterval(() => load(false), 5 * 60 * 1000);
     setInterval(tickLive, 30 * 1000);
   });
