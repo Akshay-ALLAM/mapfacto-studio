@@ -1,14 +1,14 @@
-platform,video_id,title,published_at,duration_s
-Facebook,2241992966377140,Where Are the World's Most Famous Jewels?,2026-10-19T13:41:02+00:00,30.0
-Instagram,17965687116212187,Where Are the World's Most Famous Jewels?,2026-10-17T18:37:09+00:00,
-Instagram,18059241845800068,5 Countries You Can Walk Across in One Day,2026-10-18T12:04:56+00:00,
-Instagram,18078773519720587,Which Country Invented Your Favorite Food?,2026-10-18T16:03:24+00:00,
-Instagram,18098260256396366,Superman vs Iron Man: Race to Russia (Part 1),2026-10-19T13:23:39+00:00,
-TikTok,7697732193640090912,"Which Country Invented Your Favorite Food? Pizza, sushi, tacos, crois...",2026-10-17T20:12:07+00:00,30.0
-TikTok,7697748411247775009,Where Are the World's Most Famous Jewels? #maps #geography #jewels #h...,2026-10-17T21:15:04+00:00,30.0
-TikTok,7697976679423135009,5 Countries You Can Walk Across in One Day Can you walk across a whol...,2026-10-18T12:00:53+00:00,23.0
-TikTok,7698374286473547041,Superman vs Iron Man: Race to Russia (Part 1) A fun what-if race from...,2026-10-19T13:43:49+00:00,41.0
-YouTube,OLFLaSBinLQ,Which Country Invented Your Favorite Food?,2026-10-16T17:40:14+00:00,31.0
-YouTube,VR_g-5PLOAY,Where Are the World's Most Famous Jewels?,2026-10-17T16:00:26+00:00,31.0
-YouTube,GQlBlJHvV7Q,5 Countries You Can Walk Across in One Day,2026-10-18T12:00:18+00:00,24.0
-YouTube,CIWleX6rBk0,Superman vs Iron Man: Race to Russia (Part 1),2026-10-19T13:42:17+00:00,42.0
+platform,video_id,title,published_at,duration_s,url
+Facebook,2241992966377140,Where Are the World's Most Famous Jewels?,2026-10-19T13:41:02+00:00,30.0,
+Instagram,17965687116212187,Where Are the World's Most Famous Jewels?,2026-10-17T18:37:09+00:00,,https://www.instagram.com/reel/DemxGfKAgWA/
+Instagram,18059241845800068,5 Countries You Can Walk Across in One Day,2026-10-18T12:04:56+00:00,,https://www.instagram.com/reel/DeopBKQjni_/
+Instagram,18078773519720587,Which Country Invented Your Favorite Food?,2026-10-18T16:03:24+00:00,,https://www.instagram.com/reel/DepETIKCBNU/
+Instagram,18098260256396366,Superman vs Iron Man: Race to Russia (Part 1),2026-10-19T13:23:39+00:00,,https://www.instagram.com/reel/DerWyGnjEZN/
+TikTok,7697732193640090912,"Which Country Invented Your Favorite Food? Pizza, sushi, tacos, crois...",2026-10-17T20:12:07+00:00,30.0,
+TikTok,7697748411247775009,Where Are the World's Most Famous Jewels? #maps #geography #jewels #h...,2026-10-17T21:15:04+00:00,30.0,
+TikTok,7697976679423135009,5 Countries You Can Walk Across in One Day Can you walk across a whol...,2026-10-18T12:00:53+00:00,23.0,
+TikTok,7698374286473547041,Superman vs Iron Man: Race to Russia (Part 1) A fun what-if race from...,2026-10-19T13:43:49+00:00,41.0,
+YouTube,OLFLaSBinLQ,Which Country Invented Your Favorite Food?,2026-10-16T17:40:14+00:00,31.0,
+YouTube,VR_g-5PLOAY,Where Are the World's Most Famous Jewels?,2026-10-17T16:00:26+00:00,31.0,
+YouTube,GQlBlJHvV7Q,5 Countries You Can Walk Across in One Day,2026-10-18T12:00:18+00:00,24.0,
+YouTube,CIWleX6rBk0,Superman vs Iron Man: Race to Russia (Part 1),2026-10-19T13:42:17+00:00,42.0,
