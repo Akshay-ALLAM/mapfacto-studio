@@ -43,8 +43,8 @@
   // If you upload a platform's official icon to docs/icons/<platform>.svg (or .png),
   // it replaces the generic symbol automatically, inside the same 3D tile.
   const badge = (p, size = 40, cls = "") => PL[p].logo
-    ? `<span class="b3d has-logo ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><img src="${PL[p].logo}" alt=""></span>`
-    : `<span class="b3d ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><svg viewBox="0 0 24 24" stroke="#fff">${GLYPH[p]}</svg></span>`;
+    ? `<span class="b3d has-logo ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><img src="${PL[p].logo}" alt=""><i class="sheen"></i></span>`
+    : `<span class="b3d ${cls}" style="--c:${PL[p].c};--s:${size}px" aria-hidden="true"><svg viewBox="0 0 24 24" stroke="#fff">${GLYPH[p]}</svg><i class="sheen"></i></span>`;
   const probe = (url) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(url); i.onerror = () => ok(null); i.src = url; });
   async function findLogos() {
     await Promise.all(ORDER.map(async (p) => {
@@ -405,19 +405,27 @@
         ${spark(r.timeline, PL[p].c)}
       </a>`;
     }).join("");
+    const tick = (DATA.updates || []).slice(0, 12).map((u) => `<span class="tk">${badge(u.platform, 20, "sm")}<b>${u.is_new ? "New video" : (() => { const m = [["views", u.d_views], ["likes", u.d_likes], ["comments", u.d_comments], ["shares", u.d_shares]].find(([, v]) => v); return m ? `${m[1] > 0 ? "+" : "−"}${plural(Math.abs(m[1]), m[0].slice(0, -1))}` : ""; })()}</b> ${esc(u.title)}</span>`).join("");
+    const ticker = tick ? `<div class="ticker" aria-label="Latest changes"><span class="ticker-label"><span class="pulse"></span>Live</span><div class="ticker-track"><div class="ticker-run">${tick}${tick}</div></div></div>` : "";
     $("#view").innerHTML = `<div class="view">
+      ${ticker}
       <section class="panel hero" aria-label="Summary">
-        <div class="hero-top">
-          <div>
+        <div class="hero-top hero-grid">
+          <div class="hero-copy">
             <p class="hero-kicker">MapFacto has been watched</p>
             <p class="hero-number">${count(T.views, "total")}<small>times</small></p>
             <p class="hero-kicker" style="margin-top:10px">${delta(T.d_last, "views")} in the latest update, ${dayTime(DATA.last_pull)}</p>
+            <div class="hero-stats">
+              <div class="hstat"><b>${count(T.followers, "fol")}</b><span>followers ${delta(T.followers_d24)}</span></div>
+              <div class="hstat"><b>${count(T.g24, "g24")}</b><span>views in 24 h</span></div>
+              <div class="hstat"><b>${count(T.engagement, "eng", 1, "%")}</b><span>engagement</span></div>
+            </div>
             <div class="hero-platforms">${ORDER.map((p) => `<a class="hp" href="#/${PL[p].slug}">${badge(p, 30, "sm")}<span>${p}</span><i class="${DATA.status[p].ok ? "ok" : "err"}" title="${DATA.status[p].ok ? "Connected" : "Problem"}"></i></a>`).join("")}</div>
           </div>
-          <div class="hero-stats">
-            <div class="hstat"><b>${count(T.followers, "fol")}</b><span>followers ${delta(T.followers_d24)}</span></div>
-            <div class="hstat"><b>${count(T.g24, "g24")}</b><span>views in 24 h</span></div>
-            <div class="hstat"><b>${count(T.engagement, "eng", 1, "%")}</b><span>engagement</span></div>
+          <div class="globe-wrap" aria-label="Interactive globe: drag to spin. The four platforms orbit it with their total views.">
+            <canvas class="globe" id="globe"></canvas>
+            <div class="orbit">${ORDER.map((p, i) => `<a class="sat" href="#/${PL[p].slug}" data-i="${i}" style="--c:${PL[p].c}">${badge(p, 30, "sm")}<span><b>${fmt(P[p].views)}</b>${p}</span></a>`).join("")}</div>
+            <span class="globe-hint">Drag to spin</span>
           </div>
         </div>
         <div class="scale">
@@ -460,6 +468,7 @@
       $("#matrix").innerHTML = matrixHTML();
       paintMatrix();
     }));
+    window.MF_GLOBE?.mount($(".globe-wrap"));
     lineChart("c-growth", ORDER);
     dailyChart("c-daily", ORDER);
     logChart("c-log");
@@ -521,6 +530,7 @@
 
   // ---------------------------------------------------------------- render + routing
   function render() {
+    window.MF_GLOBE?.destroy();
     charts.forEach((c) => c.dispose());
     charts = [];
     const slug = (location.hash.replace(/^#\/?/, "") || "overview").toLowerCase();

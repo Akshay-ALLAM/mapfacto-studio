@@ -19,6 +19,7 @@
   }
   root.classList.add("motion");
   if (window.ScrollTrigger) G.registerPlugin(ScrollTrigger);
+  if (window.SplitText) G.registerPlugin(SplitText);
 
   // ---------------------------------------------------------------- smooth scroll
   let lenis = null;
@@ -47,12 +48,37 @@
     }, { passive: true });
     document.addEventListener("pointerleave", () => { shown = false; G.to([glow, ring], { autoAlpha: 0, duration: 0.3 }); });
     document.addEventListener("pointerover", (e) => {
-      const hit = e.target.closest("a, button, .pcard, .cell, .scale-seg, .vrow");
+      const onGlobe = !!e.target.closest(".globe-wrap canvas");
+      ring.classList.toggle("drag", onGlobe);
+      const hit = onGlobe ? null : e.target.closest("a, button, .pcard, .cell, .scale-seg, .vrow");
       ring.classList.toggle("hover", !!hit);
       ring.style.setProperty("--rc", hit?.style.getPropertyValue("--c") || hit?.closest("[style*='--c']")?.style.getPropertyValue("--c") || "");
     });
     addEventListener("pointerdown", () => G.to(ring, { scale: 0.8, duration: 0.15 }));
     addEventListener("pointerup", () => G.to(ring, { scale: 1, duration: 0.3, ease: "back.out(3)" }));
+  }
+
+  // ---------------------------------------------------------------- glowing borders that follow the cursor
+  if (FINE) {
+    document.addEventListener("pointermove", (e) => {
+      const el = e.target.closest?.(".glow");
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      el.style.setProperty("--gx", `${e.clientX - r.left}px`);
+      el.style.setProperty("--gy", `${e.clientY - r.top}px`);
+    }, { passive: true });
+  }
+
+  // ---------------------------------------------------------------- split-text headings
+  function splitIn(el, opts = {}) {
+    if (!window.SplitText || !el || !el.textContent.trim()) return;
+    const split = SplitText.create(el, { type: opts.chars ? "chars,words" : "words", wordsClass: "w", charsClass: "ch" });
+    G.from(opts.chars ? split.chars : split.words, {
+      yPercent: 70, autoAlpha: 0, filter: "blur(8px)", duration: opts.chars ? 0.6 : 0.75, ease: "power3.out",
+      stagger: opts.chars ? 0.022 : 0.05, delay: opts.delay || 0,
+      scrollTrigger: opts.scroll && window.ScrollTrigger ? { trigger: el, start: "top 92%", once: true } : undefined,
+      onComplete: () => split.revert(),
+    });
   }
 
   // ---------------------------------------------------------------- 3D tilt
@@ -128,6 +154,9 @@
       requestAnimationFrame(() => ScrollTrigger.refresh());
     }
 
+    splitIn(document.getElementById("pageTitle"), { chars: true });
+    q(".panel h2").forEach((h) => splitIn(h, { scroll: !h.closest(".hero, .pheader"), delay: h.closest(".pheader") ? 0.25 : 0 }));
+    q(".panel:not(.pheader), .pcard, .kpi").forEach((el) => el.classList.add("glow"));
     q(".pcard").forEach((el) => tilt(el, 7, 6));
     q(".kpi").forEach((el) => tilt(el, 6, 3));
     q(".hero, .pheader").forEach((el) => tilt(el, 1.8));
