@@ -86,7 +86,7 @@
     : engOK(e, views) ? pct(e) : `<span class="na" title="Only ${fmt(views)} views: under ${minEng()}, too few for a meaningful %">n/a</span>`);
   const share = (v, views) => ((views > 0 && v < 0.1) ? "<0.1" : v);
   const plural = (n, w) => `${fmt(n)} ${w}${Math.abs(n) === 1 ? "" : "s"}`;
-  const verdictChip = (v) => `<span class="verdict ${v}">${icon(v)}${VERDICT[v]}</span>`;
+  const verdictChip = (v, label) => `<span class="verdict ${v}">${icon(v)}${esc(label || VERDICT[v])}</span>`;
   const mix = (a, b, t) => {
     const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
     const [x, y] = [p(a), p(b)];
@@ -98,27 +98,10 @@
     return mix(RAMP[i], RAMP[i + 1], seg - i);
   }
 
-  // count-up numbers: <span data-count="1234" data-id="x">
-  const shown = new Map();
-  function countUp(root) {
-    $$("[data-count]", root).forEach((el) => {
-      const to = Number(el.dataset.count), id = el.dataset.id || el.dataset.count;
-      const from = shown.has(id) ? shown.get(id) : 0;
-      const dec = Number(el.dataset.dec || 0), suf = el.dataset.suffix || "";
-      const put = (v) => (el.textContent = (dec ? v.toFixed(dec) : nf.format(Math.round(v))) + suf);
-      shown.set(id, to);
-      if (REDUCED || from === to) return put(to);
-      const t0 = performance.now(), dur = 1100;
-      const step = (t) => {
-        const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-        put(from + (to - from) * e);
-        if (k < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    });
-  }
+  // Numbers are written into the page as their final value, so every card, total and snapshot
+  // always agrees. (They used to count up from 0, which could be caught half-way.)
   const count = (n, id, dec = 0, suffix = "") =>
-    n === null || n === undefined ? "—" : `<span data-count="${n}" data-id="${id}" data-dec="${dec}" data-suffix="${suffix}">${dec ? (0).toFixed(dec) : 0}${suffix}</span>`;
+    n === null || n === undefined ? "—" : `<span class="num">${dec ? Number(n).toFixed(dec) : nf.format(Math.round(n))}${suffix}</span>`;
 
   // ---------------------------------------------------------------- contour background
   function contours() {
@@ -443,6 +426,8 @@
   // ---------------------------------------------------------------- pieces
   function feedHTML(items, max = 12) {
     if (!items.length) return `<p class="empty-note">No changes in the latest update. Numbers are checked again in about ${DATA.update_every_min || 30} minutes.</p>`;
+    const seen = new Set();
+    items = items.filter((u) => { const k = u.platform + "|" + u.title; return seen.has(k) ? false : (seen.add(k), true); });
     return `<ul class="feed">${items.slice(0, max).map((u) => {
       const chips = u.is_new ? `<span class="chip views">New video · ${fmt(u.views)} views</span>` :
         [["views", u.d_views], ["likes", u.d_likes], ["comments", u.d_comments], ["shares", u.d_shares]]
@@ -473,16 +458,16 @@
     const smallNote = small.length ? `<div class="scale-small">${small.map((p) => `<span style="--c:${PL[p].c}"><i></i><b>${p}</b> ${share(P[p].share, P[p].views)}% · ${fmt(P[p].views)} views</span>`).join(" &nbsp; ")}</div>` : "";
     const cards = ORDER.map((p) => {
       const r = P[p];
-      return `<a class="pcard" href="#/${PL[p].slug}" style="--c:${PL[p].c}" aria-label="${p}: ${fmt(r.views)} views, ${VERDICT[r.verdict]}">
+      return `<a class="pcard" href="#/${PL[p].slug}" style="--c:${PL[p].c}" aria-label="${p}: ${fmt(r.views)} views, ${r.label || VERDICT[r.verdict]}">
         <span class="pcard-edge"></span>
-        <div class="pcard-head">${badge(p, 42)}<span class="pcard-name">${p}</span>${verdictChip(r.verdict)}</div>
+        <div class="pcard-head">${badge(p, 42)}<span class="pcard-name">${p}</span>${verdictChip(r.verdict, r.label)}</div>
         <div class="pcard-num">${count(r.views, "pv-" + p)}</div>
         <div class="pcard-meta"><span>views · ${delta(r.d_last)}</span><span>${fmt(r.followers)} followers</span></div>
         ${spark(r.timeline, PL[p].c)}
       </a>`;
     }).join("");
     const tick = (DATA.updates || []).slice(0, 12).map((u) => `<span class="tk">${badge(u.platform, 20, "sm")}<b>${u.is_new ? "New video" : (() => { const m = [["views", u.d_views], ["likes", u.d_likes], ["comments", u.d_comments], ["shares", u.d_shares]].find(([, v]) => v); return m ? `${m[1] > 0 ? "+" : "−"}${plural(Math.abs(m[1]), m[0].slice(0, -1))}` : ""; })()}</b> ${esc(u.title)}</span>`).join("");
-    const ticker = tick ? `<div class="ticker" aria-label="Latest changes"><span class="ticker-label"><span class="pulse"></span>Live</span><div class="ticker-track"><div class="ticker-run">${tick}${tick}</div></div></div>` : "";
+    const ticker = tick ? `<div class="ticker" aria-label="Latest changes"><span class="ticker-label"><span class="pulse"></span>Live</span><div class="ticker-track"><div class="ticker-run">${tick}</div></div></div>` : "";
     $("#view").innerHTML = `<div class="view">
       ${ticker}
       <section class="panel hero" aria-label="Summary">
@@ -508,6 +493,7 @@
           <div class="scale-caption"><span>Where the views come from</span><span>${fmt(T.videos)} videos · 4 platforms</span></div>
           <div class="scale-bar">${segs}</div>
           <div class="scale-ticks">${ticks}</div>${smallNote}
+          <div class="scale-legend">${byViews.map((p) => `<span style="--c:${PL[p].c}"><i></i><b>${p}</b> ${share(P[p].share, P[p].views)}% · ${fmt(P[p].views)}</span>`).join("")}</div>
         </div>
       </section>
 
@@ -571,7 +557,7 @@
       ${!st.ok ? `<div class="notice"><b>${p} didn't answer the last update:</b> ${esc(st.message)}. Showing the last numbers that came through${st.last_ok ? ` (${ago(st.last_ok)})` : ""}.</div>` : ""}
       <section class="panel pheader" style="--c:${c}">
         <span class="pheader-edge"></span>
-        <div class="pheader-row">${badge(p, 76, "float")}<h2>${p}</h2>${verdictChip(r.verdict)}<span class="spacer" style="flex:1"></span>
+        <div class="pheader-row">${badge(p, 76, "float")}<h2>${p}</h2>${verdictChip(r.verdict, r.label)}<span class="spacer" style="flex:1"></span>
           <a class="btn" href="${PL[p].url}" target="_blank" rel="noopener">${PL[p].handle} ${icon("ext")}</a></div>
         <p class="reason">${esc(r.reason)}.</p>
       </section>
@@ -627,7 +613,6 @@
     $("#pageTitle").textContent = p ? "Platform report" : "Overview";
     document.title = p ? `${p} · MapFacto Studio` : "MapFacto Studio";
     p ? platformPage(p) : overview();
-    countUp($("#view"));
     window.MF_MOTION?.after($("#view"));
     if (FINE && !REDUCED) $$(".pcard").forEach((card) => card.addEventListener("pointermove", (e) => {
       const b = card.getBoundingClientRect();

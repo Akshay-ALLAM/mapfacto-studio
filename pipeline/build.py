@@ -256,6 +256,7 @@ def build(conn):
         st = status[pl]
         if not r["videos"]:
             r["verdict"], r["reason"] = "bad", f"No data yet: {st['message']}"
+            r["label"] = "Not working" if not st["ok"] else "No data yet"
             continue
         ratio = (r["vpv"] or 0) / best_vpv if best_vpv else 0
         if pl == best_pl:
@@ -272,6 +273,8 @@ def build(conn):
         if not st["ok"]:
             v = "bad" if v == "bad" else "watch"
         r["verdict"], r["reason"] = v, why
+        # "Not working" is for connection problems; a healthy connection with weak reach is "Low views"
+        r["label"] = ("Not working" if not st["ok"] else "Low views") if v == "bad" else None
         r["timeline"] = timeline.get(pl, [])
         r["daily"] = daily.get(pl, [])
         r["followers_timeline"] = fol.get(pl, {}).get("timeline", [])
@@ -370,11 +373,14 @@ def build(conn):
         prev_t = t if t in per_pl.get(next(iter(per_pl)), {}) else prev_t
 
     eng_all = latest[["likes", "comments", "shares"]].fillna(0).sum().sum()
-    totals = dict(views=num(total_views), d_last=num(latest.d_views.sum()), g24=num(latest.g24.sum()),
-                  followers=sum(x["now"] for x in fol.values()) if fol else None,
-                  followers_d24=sum(x["d24"] for x in fol.values()) if fol else None,
-                  engagement=num(eng_all / total_views * 100, 1) if total_views else None,
-                  videos=len(vids), likes=num(latest.likes.sum()), comments=num(latest.comments.sum()))
+    # Every headline number is the sum of the platform numbers shown on the platform pages.
+    sm = lambda k: sum((r[k] or 0) for r in rows.values())
+    t_views = sm("views")
+    totals = dict(views=t_views, d_last=sm("d_last"), g24=sm("g24"),
+                  followers=sm("followers") if fol else None,
+                  followers_d24=sm("followers_d24") if fol else None,
+                  engagement=num((sm("likes") + sm("comments") + sm("shares")) / t_views * 100, 1) if t_views else None,
+                  videos=len(vids), likes=sm("likes"), comments=sm("comments"))
     return {**base, "empty": False, "partial24": partial24, "totals": totals, "platforms": rows,
             "videos": vids, "timeline_all": timeline["All"], "insights": dict(good=good, bad=bad),
             "updates": updates[:30], "log": log, "history_since": iso(s.pulled_at.min()),

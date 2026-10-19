@@ -481,9 +481,9 @@ a.btn { text-decoration: none; }
   -webkit-mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
   mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
-.ticker-run { display: inline-flex; gap: 28px; white-space: nowrap; animation: marquee 38s linear infinite; padding-right: 28px; }
+.ticker-run { display: inline-flex; gap: 28px; white-space: nowrap; animation: marquee 48s linear infinite; padding-left: 100%; }
 .ticker:hover .ticker-run { animation-play-state: paused; }
-@keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes marquee { to { transform: translateX(-100%); } }
 .tk { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
 .tk b { color: var(--ink); }
 
@@ -523,7 +523,7 @@ a.btn { text-decoration: none; }
   .sat b { font-size: 13.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ticker-run { animation: none; flex-wrap: wrap; white-space: normal; }
+  .ticker-run { animation: none; flex-wrap: wrap; white-space: normal; padding-left: 0; }
   .ticker-run > .tk:nth-child(n + 13) { display: none; }
   .b3d .sheen { display: none; }
 }
@@ -558,3 +558,18 @@ a.btn { text-decoration: none; }
   .kpi .delta { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+.num { font-variant-numeric: tabular-nums; }
+.view .pcard-num, .view .hero-number { animation: numIn .6s ease both; }
+@keyframes numIn { from { opacity: .0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .view .pcard-num, .view .hero-number { animation: none; } }
+
+.scale-legend { display: none; }
+@media (max-width: 560px) {
+  .scale-ticks, .scale-small { display: none; }
+  .scale-legend { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+  .scale-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--c); margin-right: 6px; }
+  .scale-legend b { color: var(--ink); }
+  .pcard-head .b3d { --s: 32px !important; }
+  .pcard-name { font-size: 14.5px; }
+}
