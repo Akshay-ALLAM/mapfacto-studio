@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  issues: write   # to open an issue (which emails you) when a platform keeps failing
 
 concurrency:
   group: update-stats
@@ -62,3 +63,23 @@ jobs:
             git pull --rebase --autostash
             git push
           fi
+
+      - name: Open or close alert issues
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python pipeline/alert.py | while IFS='|' read -r state platform count msg; do
+            title="MapFacto: ${platform} is not updating"
+            open=$(gh issue list -R "$REPO" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+            if [ "$state" = "ALERT" ] && [ -z "$open" ]; then
+              gh issue create -R "$REPO" --title "$title" --body "${platform} has failed the last ${count} automatic updates.
+
+          Last error: \`${msg}\`
+
+          Most likely fix: the key or token for ${platform} expired. Make a new one and replace its secret in Settings > Secrets and variables > Actions. This issue closes itself after the next successful update."
+            elif [ "$state" = "OK" ] && [ -n "$open" ]; then
+              gh issue close -R "$REPO" "$open" --comment "${platform} is updating again. Closing automatically."
+            fi
+          done

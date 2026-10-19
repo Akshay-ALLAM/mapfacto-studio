@@ -79,6 +79,7 @@
     if (n === 0) return `<span class="delta zero">no change${suffix ? " " + suffix : ""}</span>`;
     return `<span class="delta ${n < 0 ? "neg" : ""}">${n > 0 ? "+" : "−"}${fmt(Math.abs(n))}${suffix ? " " + suffix : ""}</span>`;
   }
+  const share = (v, views) => ((views > 0 && v < 0.1) ? "<0.1" : v);
   const plural = (n, w) => `${fmt(n)} ${w}${Math.abs(n) === 1 ? "" : "s"}`;
   const verdictChip = (v) => `<span class="verdict ${v}">${icon(v)}${VERDICT[v]}</span>`;
   const mix = (a, b, t) => {
@@ -383,7 +384,7 @@
       const s = DATA.status[p];
       return `<div class="conn-item"><b>${badge(p, 24, "sm")}${p}
         <span class="${s.ok ? "ok" : "err"}" style="margin-left:auto">${s.ok ? "Connected" : "Problem"}</span></b>
-        <p>${s.ok ? `Last update ${ago(s.at)} · ${esc(s.message)}` : `${esc(s.message)}${s.last_ok ? `. Last good update ${ago(s.last_ok)}` : ""}`}</p></div>`;
+        <p>${s.ok ? `Last update ${ago(s.at)} · ${esc(s.message.replace(/^1 videos$/, "1 video"))}` : `${esc(s.message)}${s.last_ok ? `. Last good update ${ago(s.last_ok)}` : ""}`}</p></div>`;
     }).join("")}</div>`;
   }
 
@@ -391,10 +392,10 @@
   function overview() {
     const T = DATA.totals, P = DATA.platforms;
     const byViews = ORDER.filter((p) => P[p].views).sort((a, b) => P[b].views - P[a].views);
-    const segs = byViews.map((p) => `<div class="scale-seg" style="--c:${PL[p].c}" data-w="${P[p].share}" title="${p}: ${fmt(P[p].views)} views (${P[p].share}%)" onclick="location.hash='#/${PL[p].slug}'"></div>`).join("");
-    const ticks = byViews.map((p) => `<div class="scale-tick" data-w="${P[p].share}" style="--c:${PL[p].c}">${P[p].share >= 9 ? `<b><i></i>${p}</b><span>${P[p].share}% · ${fmt(P[p].views)}</span>` : ""}</div>`).join("");
+    const segs = byViews.map((p) => `<div class="scale-seg" style="--c:${PL[p].c}" data-w="${P[p].share}" title="${p}: ${fmt(P[p].views)} views (${share(P[p].share, P[p].views)}%)" data-href="#/${PL[p].slug}" role="link" tabindex="0"></div>`).join("");
+    const ticks = byViews.map((p) => `<div class="scale-tick" data-w="${P[p].share}" style="--c:${PL[p].c}">${P[p].share >= 9 ? `<b><i></i>${p}</b><span>${share(P[p].share, P[p].views)}% · ${fmt(P[p].views)}</span>` : ""}</div>`).join("");
     const small = byViews.filter((p) => P[p].share < 9);
-    const smallNote = small.length ? `<div class="scale-small">${small.map((p) => `<span style="--c:${PL[p].c}"><i></i><b>${p}</b> ${P[p].share}% · ${fmt(P[p].views)} views</span>`).join(" &nbsp; ")}</div>` : "";
+    const smallNote = small.length ? `<div class="scale-small">${small.map((p) => `<span style="--c:${PL[p].c}"><i></i><b>${p}</b> ${share(P[p].share, P[p].views)}% · ${fmt(P[p].views)} views</span>`).join(" &nbsp; ")}</div>` : "";
     const cards = ORDER.map((p) => {
       const r = P[p];
       return `<a class="pcard" href="#/${PL[p].slug}" style="--c:${PL[p].c}" aria-label="${p}: ${fmt(r.views)} views, ${VERDICT[r.verdict]}">
@@ -555,6 +556,8 @@
     }));
   }
 
+  document.addEventListener("click", (e) => { const t = e.target.closest("[data-href]"); if (t) location.hash = t.dataset.href; });
+  document.addEventListener("keydown", (e) => { const t = e.target.closest?.("[data-href]"); if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); location.hash = t.dataset.href; } });
   addEventListener("hashchange", () => {
     const lenis = window.MF_MOTION?.lenis;
     lenis ? lenis.scrollTo(0, { immediate: true }) : scrollTo({ top: 0 });

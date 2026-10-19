@@ -6,7 +6,20 @@
   <title>MapFacto Studio</title>
   <meta name="description" content="Live views, followers and engagement for the MapFacto channel on YouTube, TikTok, Instagram and Facebook.">
   <meta name="theme-color" content="#eef6fc">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%2310304a'/%3E%3Cpath d='M2 20h36M20 2c-6 6-6 30 0 36M20 2c6 6 6 30 0 36' stroke='%234aa3df' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="brand/mapfacto-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="brand/mapfacto-64.png">
+  <link rel="apple-touch-icon" href="brand/mapfacto-180.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MapFacto Studio">
+  <meta property="og:title" content="MapFacto Studio: live channel dashboard">
+  <meta property="og:description" content="Views, followers and engagement for MapFacto on YouTube, TikTok, Instagram and Facebook, updated automatically every 30 minutes.">
+  <meta property="og:url" content="https://akshay-allam.github.io/mapfacto-studio/">
+  <meta property="og:image" content="https://akshay-allam.github.io/mapfacto-studio/preview-desktop.jpg">
+  <meta property="og:image:width" content="2880">
+  <meta property="og:image:height" content="1800">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://akshay-allam.github.io/mapfacto-studio/preview-desktop.jpg">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <link rel="preload" href="fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="vendor/lenis.css">
   <link rel="stylesheet" href="styles.css">
@@ -15,7 +28,7 @@
   <script src="vendor/ScrollTrigger.min.js" defer></script>
   <script src="vendor/lenis.min.js" defer></script>
   <script src="vendor/SplitText.min.js" defer></script>
-  <script src="vendor/cobe.min.js" defer></script>
+  <script src="vendor/geo.min.js" defer></script>
   <script src="globe.js" defer></script>
   <script src="motion.js" defer></script>
   <script src="app.js" defer></script>
@@ -27,12 +40,8 @@
   <div class="shell">
     <aside class="rail" aria-label="Main navigation">
       <a class="brand" href="#/overview" aria-label="MapFacto Studio, overview">
-        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
-          <circle cx="20" cy="20" r="18" fill="#10304a"/>
-          <path d="M2 20h36M20 2c-6.5 6-6.5 30 0 36M20 2c6.5 6 6.5 30 0 36M5 11h30M5 29h30" stroke="#4aa3df" stroke-width="1.6" fill="none"/>
-          <circle cx="27" cy="14" r="4.2" fill="#fff"/><circle cx="27" cy="14" r="1.8" fill="#10304a"/>
-        </svg>
-        <span><span class="brand-name">MapFacto Studio</span><span class="brand-sub">Channel dashboard</span></span>
+        <img class="brand-mark" src="brand/mapfacto-64.png" alt="" width="38" height="38">
+        <span><span class="brand-name">MapFacto Studio</span><span class="brand-sub">MapFacto channel dashboard</span></span>
       </a>
       <span class="nav-label">Pages</span>
       <nav class="nav" id="nav"></nav>
@@ -42,7 +51,7 @@
     <main id="main">
       <div class="topbar">
         <div class="mobile-brand">
-          <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#10304a"/><path d="M2 20h36M20 2c-6.5 6-6.5 30 0 36M20 2c6.5 6 6.5 30 0 36" stroke="#4aa3df" stroke-width="1.6" fill="none"/></svg>
+          <img src="brand/mapfacto-64.png" alt="" width="28" height="28">
           MapFacto Studio
         </div>
         <h1 id="pageTitle">Overview</h1>

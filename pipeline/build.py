@@ -81,7 +81,7 @@ def video_url(platform, vid):
 def load(conn):
     s = pd.read_sql_query(
         "SELECT s.pulled_at, s.platform, s.video_id, s.views, s.likes, s.comments, s.shares, "
-        "s.avg_watch_s, v.title, v.published_at, v.duration_s FROM stats s "
+        "s.avg_watch_s, v.title, v.published_at, v.duration_s, v.url FROM stats s "
         "JOIN videos v ON v.platform=s.platform AND v.video_id=s.video_id", conn)
     f = pd.read_sql_query("SELECT * FROM followers", conn)
     p = pd.read_sql_query("SELECT * FROM pulls", conn)
@@ -187,16 +187,28 @@ def build(conn):
         allv = allv.iloc[np.linspace(0, len(allv) - 1, MAX_POINTS).astype(int)]
     timeline["All"] = [[iso(t), int(v)] for t, v in allv.items()]
 
-    # views gained per Paris day
+    # views gained per Paris day: today's last value minus the previous day's last value.
+    # A video's first tracked day only counts if it was published that day (otherwise its
+    # earlier views would look like they were all gained on the day tracking started).
     d = s.copy()
     d["day"] = d.pulled_at.dt.tz_convert("Europe/Paris").dt.strftime("%Y-%m-%d")
-    dl = d.groupby(ids + ["day"]).tail(1).pivot_table(index="day", columns=ids, values="views",
-                                                     aggfunc="last").sort_index().ffill().fillna(0)
-    daily_tot = dl.T.groupby(level=0).sum().T
-    daily_gain = daily_tot.diff()
-    if len(daily_tot):
-        daily_gain.iloc[0] = daily_tot.iloc[0]  # first day: everything seen so far
-    daily = {pl: [[day, int(v)] for day, v in daily_gain[pl].items()] for pl in daily_gain.columns}
+    d["pub_day"] = d.published_at.dt.tz_convert("Europe/Paris").dt.strftime("%Y-%m-%d")
+    last = d.groupby(ids + ["day"]).tail(1).sort_values("day")
+    rows_d = []
+    for (pl, vid), g in last.groupby(ids):
+        prev_v = None
+        for _, r in g.iterrows():
+            if prev_v is None:
+                gain = r.views if r.day == r.pub_day else None
+            else:
+                gain = max(0, r.views - prev_v)
+            prev_v = r.views
+            if gain is not None:
+                rows_d.append((pl, r.day, gain))
+    dg = pd.DataFrame(rows_d, columns=["platform", "day", "gain"])
+    all_days = sorted(d["day"].unique())
+    daily = {pl: [[day, int(dg[(dg.platform == pl) & (dg.day == day)].gain.sum())] for day in all_days]
+             for pl in PLATFORMS if (s.platform == pl).any()}
 
     # per platform summary + verdict
     total_views = latest.views.sum()
@@ -218,7 +230,9 @@ def build(conn):
     live = {pl: r for pl, r in rows.items() if r["videos"]}
     best_pl = max(live, key=lambda k: live[k]["vpv"] or 0) if live else None
     best_vpv = live[best_pl]["vpv"] if best_pl else 0
-    eng_pl = max(live, key=lambda k: live[k]["engagement"] or 0) if live else None
+    MIN_VIEWS_ENG = 100  # don't crown "most engaged" on a handful of views
+    eng_cand = {k: v for k, v in live.items() if (v["views"] or 0) >= MIN_VIEWS_ENG}
+    eng_pl = max(eng_cand, key=lambda k: eng_cand[k]["engagement"] or 0) if eng_cand else None
     for pl, r in rows.items():
         st = status[pl]
         if not r["videos"]:
@@ -249,7 +263,8 @@ def build(conn):
         per = {}
         for _, r in latest[latest.key == k].iterrows():
             per[r.platform] = dict(
-                id=str(r.video_id), url=video_url(r.platform, r.video_id), views=num(r.views),
+                id=str(r.video_id), url=(r.url if isinstance(r.url, str) and r.url.startswith("https://") else video_url(r.platform, r.video_id)),
+                views=num(r.views),
                 likes=num(r.likes), comments=num(r.comments), shares=num(r.shares),
                 d_views=num(r.d_views), g24=num(r.g24), engagement=num(r.engagement, 1),
                 retention=num(r.retention, 0), posted=iso(r.published_at),

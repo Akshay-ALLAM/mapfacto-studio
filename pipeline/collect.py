@@ -31,7 +31,7 @@ SECRET_VARS = (
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS videos(
-  platform TEXT, video_id TEXT, title TEXT, published_at TEXT, duration_s REAL,
+  platform TEXT, video_id TEXT, title TEXT, published_at TEXT, duration_s REAL, url TEXT,
   PRIMARY KEY(platform, video_id));
 CREATE TABLE IF NOT EXISTS stats(
   pulled_at TEXT, platform TEXT, video_id TEXT, views INTEGER, likes INTEGER,
@@ -92,10 +92,10 @@ def first_line(text):
 
 
 def video(vid, title, published, duration=None, views=None, likes=None,
-          comments=None, shares=None, avg_watch=None):
+          comments=None, shares=None, avg_watch=None, url=None):
     return dict(id=str(vid), title=title, published=published, duration=duration,
                 views=views, likes=likes, comments=comments, shares=shares,
-                avg_watch=avg_watch)
+                avg_watch=avg_watch, url=url)
 
 
 def to_int(x):
@@ -167,7 +167,7 @@ def pull_instagram():
     base = f"https://graph.instagram.com/{GRAPH_VERSION}"
     me = http("GET", f"{base}/me", headers=h, params={"fields": "followers_count"})
     media = http("GET", f"{base}/me/media", headers=h, params={
-        "fields": "id,caption,media_product_type,timestamp,like_count,comments_count",
+        "fields": "id,caption,media_product_type,timestamp,like_count,comments_count,permalink",
         "limit": 50}).get("data", [])
     vids = []
     for m in media:
@@ -191,7 +191,8 @@ def pull_instagram():
             to_int(ins.get("likes", m.get("like_count"))),
             to_int(ins.get("comments", m.get("comments_count"))),
             to_int(ins.get("shares")),
-            (avg_ms / 1000.0) if avg_ms is not None else None))
+            (avg_ms / 1000.0) if avg_ms is not None else None,
+            url=m.get("permalink")))
     return to_int(me.get("followers_count")), vids
 
 
@@ -333,9 +334,10 @@ def save(conn, now, platform, followers, vids):
         conn.execute("INSERT INTO followers VALUES(?,?,?)", (now, platform, followers))
     for v in vids:
         conn.execute(
-            "INSERT INTO videos VALUES(?,?,?,?,?) ON CONFLICT(platform, video_id) DO UPDATE SET "
-            "title=excluded.title, duration_s=COALESCE(excluded.duration_s, duration_s)",
-            (platform, v["id"], v["title"], v["published"].isoformat(), v["duration"]))
+            "INSERT INTO videos VALUES(?,?,?,?,?,?) ON CONFLICT(platform, video_id) DO UPDATE SET "
+            "title=excluded.title, duration_s=COALESCE(excluded.duration_s, duration_s), "
+            "url=COALESCE(excluded.url, url)",
+            (platform, v["id"], v["title"], v["published"].isoformat(), v["duration"], v.get("url")))
         conn.execute("INSERT INTO stats VALUES(?,?,?,?,?,?,?,?)", (
             now, platform, v["id"], v["views"], v["likes"], v["comments"],
             v["shares"], v["avg_watch"]))
@@ -351,7 +353,7 @@ def pull_all(conn):
             followers, vids = fn()
             save(conn, now, platform, followers, vids)
             conn.execute("INSERT INTO pulls VALUES(?,?,1,?)",
-                         (now, platform, f"{len(vids)} videos"))
+                         (now, platform, f"{len(vids)} video{'' if len(vids) == 1 else 's'}"))
         except Exception as e:  # never leak a token in an error message
             conn.execute("INSERT INTO pulls VALUES(?,?,0,?)",
                          (now, platform, clean_error(e)))

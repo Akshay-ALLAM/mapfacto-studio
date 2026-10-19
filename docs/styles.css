@@ -8,7 +8,7 @@
   --paper: #ffffff;        /* surfaces */
   --ink: #10304a;          /* deep chart navy */
   --ink-2: #4a6a82;        /* secondary text */
-  --ink-3: #7d97ab;        /* muted */
+  --ink-3: #566f84;        /* muted */
   --line: #d6e6f2;         /* contour / grid lines */
   --line-2: #c4dbec;
   --sky: #4aa3df;          /* calm sky accent (UI only, never a data series) */
@@ -117,7 +117,7 @@ a.btn { text-decoration: none; }
 .hstat { min-width: 0; }
 .hstat b { display: block; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; }
 .hstat > span { color: var(--ink-3); font-size: 13px; }
-.delta { font-size: 13px; font-weight: 700; color: var(--good); white-space: nowrap; }
+.delta { font-size: 13px; font-weight: 700; color: #0a780a; white-space: nowrap; }
 .delta.neg { color: var(--bad); }
 .delta.zero { color: var(--ink-3); font-weight: 400; }
 
@@ -236,7 +236,7 @@ a.btn { text-decoration: none; }
 .conn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .conn-item { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; background: var(--sea); font-size: 13px; min-width: 0; }
 .conn-item b { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 3px; }
-.conn-item .ok { color: var(--good); } .conn-item .err { color: var(--bad); }
+.conn-item .ok { color: #0a780a; } .conn-item .err { color: var(--bad); }
 .conn-item p { margin: 0; color: var(--ink-3); overflow-wrap: anywhere; }
 
 /* ---------- platform page ---------- */
@@ -527,4 +527,11 @@ a.btn { text-decoration: none; }
   .ticker-run > .tk:nth-child(n + 13) { display: none; }
   .b3d .sheen { display: none; }
 }
-.globe { width: 84%; height: 84%; margin: 8%; }
+.globe { width: 90%; height: 90%; margin: 5%; }
+
+/* v4: brand logo + brand globe */
+.brand-mark { width: 38px; height: 38px; border-radius: 50%; box-shadow: 0 6px 16px -8px rgba(7, 44, 89, .6); }
+.mobile-brand img { width: 28px; height: 28px; border-radius: 50%; }
+.globe-wrap::before { background: radial-gradient(circle at 50% 50%, rgba(31, 156, 150, .20), rgba(246, 149, 42, .08) 45%, rgba(74, 163, 223, 0) 68%); }
+.globe { contain: none; }
+.scale-seg:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }

@@ -27,7 +27,7 @@ import collect  # noqa: E402  (needs MAPFACTO_DB set first)
 import build  # noqa: E402
 
 TABLES = {
-    "videos": ["platform", "video_id", "title", "published_at", "duration_s"],
+    "videos": ["platform", "video_id", "title", "published_at", "duration_s", "url"],
     "stats": ["pulled_at", "platform", "video_id", "views", "likes", "comments", "shares", "avg_watch_s"],
     "followers": ["pulled_at", "platform", "followers"],
     "pulls": ["pulled_at", "platform", "ok", "message"],
@@ -41,7 +41,7 @@ def load_history(conn):
         if not path.exists():
             continue
         with path.open(newline="", encoding="utf-8") as f:
-            rows = [[(r[c] if r[c] != "" else None) for c in cols] for r in csv.DictReader(f)]
+            rows = [[(r.get(c) if r.get(c) not in ("", None) else None) for c in cols] for r in csv.DictReader(f)]
         verb = "INSERT OR REPLACE" if table == "videos" else "INSERT"
         conn.executemany(f"{verb} INTO {table}({','.join(cols)}) VALUES({','.join('?' * len(cols))})", rows)
     conn.commit()
