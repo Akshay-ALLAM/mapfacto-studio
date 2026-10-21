@@ -4,12 +4,12 @@ on:
   schedule:
     - cron: "*/30 * * * *"   # every 30 minutes (GitHub may run it a few minutes late)
   workflow_dispatch:          # lets you run it by hand from the Actions tab
-  push:                       # also runs when the code changes (not for the robot's own data commits)
+  push:                       # also runs when the code changes
     branches: [main]
-    paths: ["pipeline/**", ".github/workflows/**", "requirements.txt", "data/**"]
+    paths: ["pipeline/**", ".github/workflows/**", "requirements.txt"]
 
 permissions:
-  contents: write
+  contents: read  # the robot no longer commits: real numbers go to Supabase, never to the repo
   issues: write   # to open an issue (which emails you) when a platform keeps failing
 
 concurrency:
@@ -40,6 +40,7 @@ jobs:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python pipeline/run.py
 
       - name: Check that no key or token would be published
@@ -49,20 +50,8 @@ jobs:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python pipeline/guard.py
-
-      - name: Save to the repository
-        run: |
-          git config user.name "mapfacto-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data docs/data.json
-          if git diff --cached --quiet; then
-            echo "Nothing changed."
-          else
-            git commit -m "Update stats $(date -u +'%Y-%m-%d %H:%M') UTC"
-            git pull --rebase --autostash
-            git push
-          fi
 
       - name: Open or close alert issues
         if: always()

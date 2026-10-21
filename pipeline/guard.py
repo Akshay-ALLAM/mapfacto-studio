@@ -19,7 +19,8 @@ SCAN_FILES = ["README.md", "requirements.txt"]
 SKIP_DIRS = {"vendor", "fonts", "__pycache__"}
 TEXT_EXT = {".csv", ".json", ".js", ".html", ".css", ".py", ".yml", ".yaml", ".md", ".txt", ""}
 SECRET_VARS = ["YT_API_KEY", "IG_TOKEN", "FB_PAGE_TOKEN", "YT_CLIENT_SECRET", "YT_REFRESH_TOKEN",
-               "TIKTOK_TOKEN", "TIKTOK_CLIENT_SECRET", "TIKTOK_REFRESH_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"]
+               "TIKTOK_TOKEN", "TIKTOK_CLIENT_SECRET", "TIKTOK_REFRESH_TOKEN", "GH_TOKEN", "GITHUB_TOKEN",
+               "SUPABASE_SECRET_KEY"]
 PATTERNS = {
     "Facebook/Meta token": re.compile(r"\bEAA[A-Za-z0-9]{30,}"),
     "Instagram token": re.compile(r"\bIG(?:AA|QV)[A-Za-z0-9_-]{30,}"),
@@ -27,6 +28,9 @@ PATTERNS = {
     "Google OAuth token": re.compile(r"\bya29\.[0-9A-Za-z_-]{20,}|\b1//0[0-9A-Za-z_-]{30,}"),
     "GitHub token": re.compile(r"\b(?:ghp|gho|ghs|ghu)_[A-Za-z0-9]{30,}|\bgithub_pat_[A-Za-z0-9_]{40,}"),
     "access_token in a URL": re.compile(r"access_token=[A-Za-z0-9._-]{20,}"),
+    "Supabase secret key": re.compile(r"\bsb_secret_[A-Za-z0-9_-]{10,}"),
+    # a JWT whose payload says "role":"service_role" (base64 of '"role":"service_role"' variants)
+    "Supabase service_role key": re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*(?:c2VydmljZV9yb2xl|NlcnZpY2Vfcm9sZ|zZXJ2aWNlX3JvbG)[A-Za-z0-9_-]*\."),
 }
 
 
@@ -58,12 +62,16 @@ def main():
             for label, rx in PATTERNS.items():
                 if rx.search(line):
                     problems.append(f"{p.relative_to(ROOT)}:{i}: looks like a {label}")
+    # the public website may only ever carry demo numbers
+    pub = ROOT / "docs" / "data.json"
+    if pub.exists() and '"demo":true' not in pub.read_text(encoding="utf-8").replace(" ", ""):
+        problems.append("docs/data.json: is not demo data (real numbers must stay in Supabase)")
     if problems:
         print("Leak guard: refusing to continue, a key or token would be published:")
         for msg in sorted(set(problems)):
             print("  " + msg)
         sys.exit(1)
-    print("Leak guard: no keys or tokens found in the files that get published.")
+    print("Leak guard: no keys, tokens or real numbers in the files that get published.")
 
 
 if __name__ == "__main__":

@@ -147,19 +147,160 @@
 
   // ---------------------------------------------------------------- data
   let DATA = null, route = "overview", charts = [];
-  let checkedAt = null, busy = false;
+  // ---------------------------------------------------------------- sign in (Supabase)
+  // Visitors get docs/data.json, which is demo data. The real dashboard lives in Supabase and
+  // Row Level Security only returns it to signed-in owners. The publishable key below is meant
+  // to be public: on its own it can't read anything.
+  const SB = { url: "https://mhcbyreqascwvqocybvn.supabase.co", key: "sb_publishable_B0yBet8z2-yoGYHj5IAurw_yN8RhNll" };
+  let sb = null, session = null, MODE = "demo", noAccess = false;
+  function initAuth() {
+    if (!window.supabase?.createClient) return;
+    sb = window.supabase.createClient(SB.url, SB.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    sb.auth.onAuthStateChange((event, s) => {
+      session = s;
+      updateAccount();
+      if (event === "PASSWORD_RECOVERY") openAuth("newpass");
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") load(false);
+    });
+  }
+  async function fetchData() {
+    if (sb) { try { session = (await sb.auth.getSession()).data.session; } catch (e) { session = null; } }
+    noAccess = false;
+    if (session) {
+      const { data, error } = await sb.from("dashboard").select("data").eq("id", 1).maybeSingle();
+      if (error) throw new Error(error.message);
+      if (data?.data) { MODE = "real"; return data.data; }
+      noAccess = true; // signed in, but this account isn't allowed to see the real numbers
+    }
+    MODE = "demo";
+    const r = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }
+  function updateAccount() {
+    const b = $("#account"), l = $("#accountLabel");
+    if (!b) return;
+    b.hidden = !sb;
+    l.textContent = session ? "Sign out" : "Sign in";
+    b.title = session ? `Signed in as ${session.user?.email || ""}` : "Owner sign in";
+    b.classList.toggle("signed", !!session);
+  }
+
+  const AUTH_TEXT = {
+    signin: { title: "Sign in", sub: "Owner access to the real numbers. Visitors see demo data.", btn: "Sign in" },
+    signup: { title: "Create your account", sub: "Invite-only: only an approved email can create an account.", btn: "Create account" },
+    reset: { title: "Reset your password", sub: "We'll email you a link to choose a new password.", btn: "Send reset link" },
+    newpass: { title: "Choose a new password", sub: "At least 8 characters.", btn: "Save new password" },
+  };
+  let authMode = "signin";
+  function authModal() {
+    let m = $("#authModal");
+    if (m) return m;
+    m = document.createElement("div");
+    m.id = "authModal"; m.className = "modal"; m.hidden = true;
+    m.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <button class="modal-x" type="button" aria-label="Close">×</button>
+      <img class="modal-mark" src="brand/mapfacto-64.png" alt="" width="44" height="44">
+      <h2 id="authTitle"></h2><p class="sub" id="authSub"></p>
+      <form id="authForm" novalidate>
+        <label class="fld" data-f="email"><span>Email</span><input id="authEmail" type="email" autocomplete="email" required></label>
+        <label class="fld" data-f="password"><span>Password</span><input id="authPass" type="password" autocomplete="current-password" minlength="8" required></label>
+        <p class="auth-msg" id="authMsg" role="alert"></p>
+        <button class="btn primary" id="authBtn" type="submit"></button>
+      </form>
+      <div class="auth-alt" id="authAlt"></div>
+    </div>`;
+    document.body.append(m);
+    m.addEventListener("click", (e) => {
+      if (e.target === m || e.target.closest(".modal-x")) closeAuth();
+      const sw = e.target.closest("[data-mode]");
+      if (sw) openAuth(sw.dataset.mode);
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !m.hidden) closeAuth(); });
+    $("#authForm", m).addEventListener("submit", submitAuth);
+    return m;
+  }
+  function openAuth(mode = "signin") {
+    const m = authModal(), T = AUTH_TEXT[mode];
+    authMode = mode;
+    $("#authTitle").textContent = T.title; $("#authSub").textContent = T.sub; $("#authBtn").textContent = T.btn;
+    $('[data-f="email"]').hidden = mode === "newpass";
+    $('[data-f="password"]').hidden = mode === "reset";
+    $("#authPass").autocomplete = mode === "signin" ? "current-password" : "new-password";
+    $("#authMsg").textContent = ""; $("#authMsg").className = "auth-msg";
+    $("#authAlt").innerHTML = {
+      signin: `<button type="button" data-mode="signup">First time? Create your account</button><button type="button" data-mode="reset">Forgot password?</button>`,
+      signup: `<button type="button" data-mode="signin">Already have an account? Sign in</button>`,
+      reset: `<button type="button" data-mode="signin">Back to sign in</button>`,
+      newpass: "",
+    }[mode];
+    m.hidden = false;
+    document.documentElement.classList.add("modal-open");
+    setTimeout(() => (mode === "newpass" ? $("#authPass") : $("#authEmail")).focus(), 30);
+  }
+  function closeAuth() { const m = $("#authModal"); if (m) m.hidden = true; document.documentElement.classList.remove("modal-open"); }
+  function friendly(msg) {
+    const m = String(msg || "");
+    if (/invalid login credentials/i.test(m)) return "Wrong email or password.";
+    if (/email not confirmed/i.test(m)) return "Please confirm your email first: open the link we sent you, then sign in.";
+    if (/database error saving new user|invite-only/i.test(m)) return "This dashboard is invite-only, and this email isn't on the list.";
+    if (/rate limit/i.test(m)) return "Too many emails were sent. Please wait an hour and try again.";
+    if (/password should be at least|at least 8/i.test(m)) return "Use at least 8 characters for the password.";
+    if (/failed to fetch|network/i.test(m)) return "Couldn't reach the sign-in service. Check your connection and try again.";
+    return m || "Something went wrong. Please try again.";
+  }
+  async function submitAuth(e) {
+    e.preventDefault();
+    const email = $("#authEmail").value.trim(), password = $("#authPass").value;
+    const msg = $("#authMsg"), btn = $("#authBtn");
+    const say = (t, ok = false) => { msg.textContent = t; msg.className = "auth-msg" + (ok ? " ok" : ""); };
+    if (authMode !== "newpass" && !/^\S+@\S+\.\S+$/.test(email)) return say("Enter a valid email address.");
+    if (authMode !== "reset" && password.length < 8) return say("The password needs at least 8 characters.");
+    btn.disabled = true; btn.classList.add("spinning");
+    const back = location.origin + location.pathname;
+    try {
+      if (authMode === "signin") {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        closeAuth(); toast("Signed in. Loading your real numbers…");
+      } else if (authMode === "signup") {
+        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: back } });
+        if (error) throw error;
+        if (data.session) { closeAuth(); toast("Account created. Loading your real numbers…"); }
+        else say("Almost done: we sent you an email. Open the link in it to confirm your address, then sign in here.", true);
+      } else if (authMode === "reset") {
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: back });
+        if (error) throw error;
+        say("If this email has an account, a reset link is on its way.", true);
+      } else {
+        const { error } = await sb.auth.updateUser({ password });
+        if (error) throw error;
+        closeAuth(); toast("New password saved.");
+      }
+    } catch (err) {
+      say(friendly(err?.message));
+    } finally {
+      btn.disabled = false; btn.classList.remove("spinning");
+    }
+  }
+  async function onAccount() {
+    if (!sb) return;
+    if (session) { await sb.auth.signOut(); toast("Signed out. Showing demo data."); }
+    else openAuth("signin");
+  }
+
+  let checkedAt = null, busy = false, again = false;
   async function load(manual) {
     const btn = $("#reload"), label = btn.querySelector(".btn-label");
-    if (busy) return;
+    if (busy) { again = true; return; }
     busy = true;
     const t0 = performance.now();
     if (manual) { btn.classList.add("spinning"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); if (label) label.textContent = "Checking…"; }
     let msg = "";
     try {
-      const r = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const next = await r.json();
-      const changed = !DATA || next.generated_at !== DATA.generated_at;
+      const prevMode = DATA ? MODE : null;
+      const next = await fetchData();
+      const changed = !DATA || next.generated_at !== DATA.generated_at || prevMode !== MODE;
       const hadData = !!DATA;
       DATA = next;
       checkedAt = new Date();
@@ -181,6 +322,7 @@
         }
         busy = false;
         tickLive();
+        if (again) { again = false; load(false); }
       }, wait);
     }
   }
@@ -194,6 +336,13 @@
 
   function tickLive() {
     if (!DATA) return;
+    if (MODE === "demo") {
+      $("#pulse").classList.remove("stale"); $("#pulse").classList.add("demo");
+      $("#liveText").innerHTML = `Demo data<span class="long"> · sample numbers</span>`;
+      $("#live").title = "The public dashboard shows made-up numbers. The owner signs in to see the real ones.";
+      return;
+    }
+    $("#pulse").classList.remove("demo");
     const last = DATA.last_pull, mins = last ? (Date.now() - new Date(last)) / 60000 : Infinity;
     const every = DATA.update_every_min || 30;
     const next = Math.round(every - (mins % every));
@@ -446,7 +595,7 @@
       const s = DATA.status[p];
       return `<div class="conn-item"><b>${badge(p, 24, "sm")}${p}
         <span class="${s.ok ? "ok" : "err"}" style="margin-left:auto">${s.ok ? "Connected" : "Problem"}</span></b>
-        <p>${s.ok ? `Last update ${ago(s.at)} · ${esc(s.message.replace(/^1 videos$/, "1 video"))}` : `${esc(s.message)}${s.last_ok ? `. Last good update ${ago(s.last_ok)}` : ""}`}</p></div>`;
+        <p>${s.ok && MODE === "demo" ? `Sample connection · ${esc(s.message)}` : s.ok ? `Last update ${ago(s.at)} · ${esc(s.message.replace(/^1 videos$/, "1 video"))}` : `${esc(s.message)}${s.last_ok ? `. Last good update ${ago(s.last_ok)}` : ""}`}</p></div>`;
     }).join("")}</div>`;
   }
 
@@ -469,7 +618,7 @@
       </a>`;
     }).join("");
     const tick = (DATA.updates || []).slice(0, 12).map((u) => `<span class="tk">${badge(u.platform, 20, "sm")}<b>${u.is_new ? "New video" : (() => { const m = [["views", u.d_views], ["likes", u.d_likes], ["comments", u.d_comments], ["shares", u.d_shares]].find(([, v]) => v); return m ? `${m[1] > 0 ? "+" : "−"}${plural(Math.abs(m[1]), m[0].slice(0, -1))}` : ""; })()}</b> ${esc(u.title)} <em>on ${u.platform}</em></span>`).join("");
-    const ticker = tick ? `<div class="ticker" aria-label="Latest changes"><span class="ticker-label"><span class="pulse"></span>Live</span><div class="ticker-track"><div class="ticker-run">${tick}</div></div></div>` : "";
+    const ticker = tick ? `<div class="ticker" aria-label="Latest changes"><span class="ticker-label"><span class="pulse"></span>${MODE === "demo" ? "Latest" : "Live"}</span><div class="ticker-track"><div class="ticker-run">${tick}</div></div></div>` : "";
     $("#view").innerHTML = `<div class="view">
       ${ticker}
       <section class="panel hero" aria-label="Summary">
@@ -614,6 +763,13 @@
     $("#pageTitle").textContent = p ? "Platform report" : "Overview";
     document.title = p ? `${p} · MapFacto Studio` : "MapFacto Studio";
     p ? platformPage(p) : overview();
+    if (MODE === "demo") {
+      $(".view").insertAdjacentHTML("afterbegin", `<div class="demo-banner" role="note">
+        <span class="demo-tag">Demo</span>
+        <span>${noAccess ? `You're signed in as <b>${esc(session?.user?.email)}</b>, but this account can't see the real numbers, so this is demo data.`
+          : "You're looking at <b>demo data</b>: every number here is made up, so the channel's real results stay private. The real dashboard is behind a sign-in."}</span>
+        ${noAccess ? "" : `<button class="btn primary sm" type="button" data-signin>Owner sign in</button>`}</div>`);
+    }
     window.MF_MOTION?.after($("#view"));
     if (FINE && !REDUCED) $$(".pcard").forEach((card) => card.addEventListener("pointermove", (e) => {
       const b = card.getBoundingClientRect();
@@ -633,6 +789,10 @@
     contours();
     renderNav();
     $("#reload").addEventListener("click", () => load(true));
+    initAuth();
+    updateAccount();
+    $("#account").addEventListener("click", onAccount);
+    document.addEventListener("click", (e) => { if (e.target.closest("[data-signin]")) openAuth("signin"); });
     findLogos().then(() => { renderNav(); load(false); });
     setInterval(() => load(false), 5 * 60 * 1000);
     setInterval(tickLive, 30 * 1000);

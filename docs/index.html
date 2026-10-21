@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>MapFacto Studio</title>
-  <meta name="description" content="Live views, followers and engagement for the MapFacto channel on YouTube, TikTok, Instagram and Facebook.">
+  <meta name="description" content="A live analytics dashboard for the MapFacto channel on YouTube, TikTok, Instagram and Facebook. The public version shows demo data; the owner signs in to see the real numbers.">
   <meta name="theme-color" content="#eef6fc">
   <link rel="icon" type="image/png" sizes="32x32" href="brand/mapfacto-32.png">
   <link rel="icon" type="image/png" sizes="64x64" href="brand/mapfacto-64.png">
@@ -19,19 +19,20 @@
   <meta property="og:image:height" content="1800">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://akshay-allam.github.io/mapfacto-studio/preview-desktop.jpg">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com; font-src 'self'; connect-src 'self' https://mhcbyreqascwvqocybvn.supabase.co; object-src 'none'; base-uri 'self'; form-action 'none'">
   <link rel="preload" href="fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="vendor/lenis.css?v=599bcc02">
-  <link rel="stylesheet" href="styles.css?v=e31185a5">
+  <link rel="stylesheet" href="styles.css?v=e616d7b8">
   <script src="vendor/echarts.min.js?v=8f667a68" defer></script>
   <script src="vendor/gsap.min.js?v=9396f256" defer></script>
   <script src="vendor/ScrollTrigger.min.js?v=05ca5ad8" defer></script>
   <script src="vendor/lenis.min.js?v=acddbf76" defer></script>
   <script src="vendor/SplitText.min.js?v=6c4c7716" defer></script>
   <script src="vendor/geo.min.js?v=7dd9f776" defer></script>
+  <script src="vendor/supabase.min.js?v=eb8a38ca" defer></script>
   <script src="globe.js?v=8e36f8c1" defer></script>
   <script src="motion.js?v=980a195d" defer></script>
-  <script src="app.js?v=05ff53db" defer></script>
+  <script src="app.js?v=58c3e6c0" defer></script>
 </head>
 <body>
   <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -61,9 +62,13 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
           <span class="btn-label">Reload</span>
         </button>
+        <button class="btn btn-account" id="account" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <span class="btn-label" id="accountLabel">Sign in</span>
+        </button>
       </div>
       <div id="view"><div class="skeleton"></div></div>
-      <p class="foot">Numbers update automatically about every 30 minutes. Built with Python, GitHub Actions, GitHub Pages, ECharts and GSAP.</p>
+      <p class="foot" id="foot">Numbers update automatically about every 30 minutes. Built with Python, GitHub Actions, GitHub Pages, ECharts and GSAP.</p>
     </main>
   </div>
 </body>
