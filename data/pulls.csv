@@ -317,3 +317,7 @@ pulled_at,platform,ok,message
 2026-10-29T09:43:20+00:00,Instagram,0,"HTTP 401: {""error"":{""message"":""Error validating access token: The session has been invalidated because the user changed their password or Facebook has changed t"
 2026-10-29T09:43:20+00:00,Facebook,1,8 videos
 2026-10-29T09:43:20+00:00,TikTok,1,14 videos
+2026-10-29T16:49:20+00:00,YouTube,1,13 videos
+2026-10-29T16:49:20+00:00,Instagram,0,"HTTP 401: {""error"":{""message"":""Error validating access token: The session has been invalidated because the user changed their password or Facebook has changed t"
+2026-10-29T16:49:20+00:00,Facebook,1,9 videos
+2026-10-29T16:49:20+00:00,TikTok,1,15 videos
